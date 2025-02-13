@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -42,6 +42,10 @@ interface FeedbackItem {
   dislikes: string[];
   comments: { username: string; comment: string; createdAt: Date }[];
   approved: boolean;
+  validity: {
+    startDate: Date;
+    endDate: Date;
+  };
 }
 
 export default function FeedbackPage() {
@@ -51,33 +55,85 @@ export default function FeedbackPage() {
   const [showMoodDialog, setShowMoodDialog] = useState(false);
   const router = useRouter();
 
-  useEffect(() => {
-    const fetchSession = async () => {
-      const res = await fetch("/api/session");
-      const data = await res.json();
-      setSession(data);
-    };
+  const fetchSession = useCallback(async () => {
+    const res = await fetch("/api/session");
+    const data = await res.json();
+    setSession(data);
+  }, []);
 
-    const fetchFeedback = async () => {
-      const res = await fetch("/api/feedback");
-      const data = await res.json();
-      setFeedback(data);
-    };
+  const checkFeedbackValidity = useCallback((feedbackItem: FeedbackItem) => {
+    const currentDate = new Date();
+    const endDate = new Date(feedbackItem.validity.endDate);
 
-    const checkMoodData = async () => {
-      if (session?.isLoggedIn && session.username) {
-        const res = await fetch(`/api/mood?username=${session.username}`);
-        const data = await res.json();
-        if (!data.mood) {
-          setShowMoodDialog(true);
-        }
+    if (currentDate > endDate && feedbackItem.status !== "Resolved") {
+      return { ...feedbackItem, status: "Overdue" };
+    }
+    return feedbackItem;
+  }, []);
+
+  const updateFeedbackStatus = useCallback(
+    async (id: string, status: string) => {
+      try {
+        const res = await fetch(`/api/feedback/${id}`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ status }),
+        });
+        if (!res.ok) throw new Error("Failed to update feedback status");
+      } catch (error) {
+        console.error("Error updating feedback status:", error);
       }
-    };
+    },
+    []
+  );
 
+  const fetchFeedback = useCallback(async () => {
+    const res = await fetch("/api/feedback");
+    const data = await res.json();
+    // Filter out unapproved feedback items and check validity
+    const approvedFeedback = data
+      .filter((item: FeedbackItem) => item.approved)
+      .map((item: FeedbackItem) => {
+        const checkedItem = checkFeedbackValidity(item);
+        if (checkedItem.status !== item.status) {
+          updateFeedbackStatus(checkedItem._id, checkedItem.status);
+        }
+        return checkedItem;
+      });
+    setFeedback(approvedFeedback);
+  }, [checkFeedbackValidity, updateFeedbackStatus]);
+
+  const checkMoodData = useCallback(async () => {
+    if (session?.isLoggedIn && session.username) {
+      const res = await fetch(`/api/mood?username=${session.username}`);
+      const data = await res.json();
+      if (!data.mood) {
+        setShowMoodDialog(true);
+      }
+    }
+  }, [session]);
+
+  useEffect(() => {
     fetchSession();
+
+    // Set up polling for fetchFeedback (every 10 seconds)
+    const feedbackInterval = setInterval(fetchFeedback, 10000);
+
+    // Set up polling for checkMoodData (every 30 seconds)
+    const moodInterval = setInterval(checkMoodData, 30000);
+
+    // Initial fetch
     fetchFeedback();
     checkMoodData();
-  }, [session]);
+
+    // Clean up intervals on component unmount
+    return () => {
+      clearInterval(feedbackInterval);
+      clearInterval(moodInterval);
+    };
+  }, [fetchSession, fetchFeedback, checkMoodData]);
 
   const handleLogout = async () => {
     const response = await fetch("/api/logout", {
@@ -148,7 +204,7 @@ export default function FeedbackPage() {
                 className={`${
                   filter === status
                     ? "bg-[#6CBE45] hover:bg-green-700 text-white rounded-full"
-                    : "text-gray-300 hover:text-white hover:bg-gray-800 rounded-full"
+                    : "text-white hover:text-white hover:bg-gray-800 rounded-full"
                 } transition-all duration-200`}
                 onClick={() => setFilter(status)}
               >

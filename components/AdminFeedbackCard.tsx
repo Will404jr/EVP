@@ -106,7 +106,7 @@ export function AdminFeedbackCard({
           <Badge
             className={`${getStatusColor(
               feedback.status
-            )} text-white px-4 py-1`}
+            )} text-white px-4 py-1 rounded-full`}
           >
             {feedback.status}
           </Badge>

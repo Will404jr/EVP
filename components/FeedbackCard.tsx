@@ -90,6 +90,14 @@ export function FeedbackCard({ feedback, onUpdate }: FeedbackCardProps) {
     setNewComment("");
   };
 
+  const handleResolve = async () => {
+    if (!session?.isLoggedIn || !session.username) return;
+    await onUpdate(feedback._id, { action: "resolve" });
+  };
+
+  const showResolveButton =
+    feedback.assignedTo === session?.username && feedback.status !== "Resolved";
+
   return (
     <Card className="w-full bg-white shadow-md hover:shadow-lg transition-shadow duration-200">
       <CardHeader className="border-b border-gray-100">
@@ -115,7 +123,7 @@ export function FeedbackCard({ feedback, onUpdate }: FeedbackCardProps) {
           <Badge
             className={`${getStatusColor(
               feedback.status
-            )} text-white px-4 py-1`}
+            )} text-white px-4 py-1 rounded-full`}
           >
             {feedback.status}
           </Badge>
@@ -187,6 +195,15 @@ export function FeedbackCard({ feedback, onUpdate }: FeedbackCardProps) {
             <div className="text-sm text-gray-600">
               Assigned to: {feedback.assignedTo}
             </div>
+          )}
+
+          {showResolveButton && (
+            <Button
+              onClick={handleResolve}
+              className="bg-[#6CBE45] hover:bg-green-700 text-white"
+            >
+              Resolve
+            </Button>
           )}
         </div>
 

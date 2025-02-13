@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -38,6 +38,10 @@ interface FeedbackItem {
   comments: { username: string; comment: string; createdAt: Date }[];
   approved: boolean;
   createdAt: string;
+  validity: {
+    startDate: Date;
+    endDate: Date;
+  };
 }
 
 export default function AdminFeedbackPage() {
@@ -48,6 +52,47 @@ export default function AdminFeedbackPage() {
   const [isAnalysisDrawerOpen, setIsAnalysisDrawerOpen] = useState(false);
   const router = useRouter();
 
+  const checkFeedbackValidity = useCallback((feedbackItem: FeedbackItem) => {
+    const currentDate = new Date();
+    const endDate = new Date(feedbackItem.validity.endDate);
+
+    if (currentDate > endDate && feedbackItem.status !== "Resolved") {
+      return { ...feedbackItem, status: "Overdue" };
+    }
+    return feedbackItem;
+  }, []);
+
+  const updateFeedbackStatus = useCallback(
+    async (id: string, status: string) => {
+      try {
+        const res = await fetch(`/api/feedback/${id}`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ status }),
+        });
+        if (!res.ok) throw new Error("Failed to update feedback status");
+      } catch (error) {
+        console.error("Error updating feedback status:", error);
+      }
+    },
+    []
+  );
+
+  const fetchFeedback = useCallback(async () => {
+    const res = await fetch("/api/feedback");
+    const data = await res.json();
+    const updatedFeedback = data.map((item: FeedbackItem) => {
+      const checkedItem = checkFeedbackValidity(item);
+      if (checkedItem.status !== item.status) {
+        updateFeedbackStatus(checkedItem._id, checkedItem.status);
+      }
+      return checkedItem;
+    });
+    setFeedback(updatedFeedback);
+  }, [checkFeedbackValidity, updateFeedbackStatus]);
+
   useEffect(() => {
     const fetchSession = async () => {
       const res = await fetch("/api/session");
@@ -55,15 +100,15 @@ export default function AdminFeedbackPage() {
       setSession(data);
     };
 
-    const fetchFeedback = async () => {
-      const res = await fetch("/api/feedback");
-      const data = await res.json();
-      setFeedback(data);
-    };
-
     fetchSession();
     fetchFeedback();
-  }, []);
+
+    // Set up polling for fetchFeedback every 5 seconds
+    const feedbackInterval = setInterval(fetchFeedback, 5000);
+
+    // Clean up interval on component unmount
+    return () => clearInterval(feedbackInterval);
+  }, [fetchFeedback]);
 
   const handleLogout = async () => {
     const response = await fetch("/api/logout", {

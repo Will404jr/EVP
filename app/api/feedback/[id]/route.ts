@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import dbConnect from "@/lib/db";
 import { getSession } from "@/lib/session";
 import { Feedback } from "@/lib/models/feedback";
@@ -88,6 +88,11 @@ export async function PUT(
     } else if (data.action === "assign" && session.personnelType === "Admin") {
       feedback.assignedTo = data.assignedTo;
       feedback.status = "Pending";
+    } else if (
+      data.action === "resolve" &&
+      feedback.assignedTo === session.username
+    ) {
+      feedback.status = "Resolved";
     } else {
       // Handle other updates
       Object.assign(feedback, data);
