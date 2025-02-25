@@ -54,8 +54,8 @@ const LoginPage = () => {
       </div>
 
       {/* Right side - Authentication Section */}
-      <div className="w-full lg:w-1/2 bg-[#184285] p-8 flex items-center justify-center">
-        <Card className="w-full max-w-md p-8 shadow-lg bg-[#184285] border-none">
+      <div className="w-full lg:w-1/2 bg-[#13263c] p-8 flex items-center justify-center">
+        <Card className="w-full max-w-md p-8 shadow-lg bg-[#13263c] border-none">
           <CardContent>
             <div className="flex justify-center mb-12">
               <Image

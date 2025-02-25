@@ -8,9 +8,9 @@ export default function Background({
   children: React.ReactNode;
 }) {
   return (
-    <div className="min-h-screen relative overflow-hidden">
+    <div className="min-h-screen relative overflow-hidden bg-[#13263c]">
       {/* Background Image */}
-      <Image
+      {/* <Image
         src={background || "/placeholder.svg"}
         alt="Background"
         layout="fill"
@@ -18,7 +18,7 @@ export default function Background({
         quality={100}
         priority
         className="z-0"
-      />
+      /> */}
 
       {/* Content */}
       <div className="relative z-20">{children}</div>

@@ -7,8 +7,9 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
-import { User } from "lucide-react";
+import { User, Menu, X, PlusCircle } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import SubmitFeedbackDialog from "@/components/submit-feedback-dialogue";
@@ -20,6 +21,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
 interface SessionData {
   id?: string;
@@ -53,6 +55,7 @@ export default function FeedbackPage() {
   const [filter, setFilter] = useState("All");
   const [session, setSession] = useState<SessionData | null>(null);
   const [showMoodDialog, setShowMoodDialog] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const router = useRouter();
 
   const fetchSession = useCallback(async () => {
@@ -135,6 +138,18 @@ export default function FeedbackPage() {
     };
   }, [fetchSession, fetchFeedback, checkMoodData]);
 
+  useEffect(() => {
+    // Close mobile menu when window is resized to desktop size
+    const handleResize = () => {
+      if (window.innerWidth >= 768) {
+        setIsMobileMenuOpen(false);
+      }
+    };
+
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
   const handleLogout = async () => {
     const response = await fetch("/api/logout", {
       method: "POST",
@@ -190,13 +205,31 @@ export default function FeedbackPage() {
 
   return (
     <div className="min-h-screen bg-transparent">
-      <nav className="sticky top-0 z-50  bg-transparent px-6 py-4 ">
+      <nav className="sticky top-0 z-50 bg-transparent backdrop-blur-sm px-4 sm:px-6 py-4 shadow-sm">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
+          {/* Logo and title - always visible */}
           <div className="flex items-center">
-            <div className="text-2xl font-bold text-white">EVP</div>
+            <div className="text-xl sm:text-2xl font-bold text-white">EVP</div>
           </div>
 
-          <div className="flex items-center justify-center space-x-2">
+          {/* Mobile menu button */}
+          <div className="flex md:hidden items-center space-x-2">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="text-white hover:bg-gray-800 rounded-full"
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            >
+              {isMobileMenuOpen ? (
+                <X className="h-5 w-5" />
+              ) : (
+                <Menu className="h-5 w-5" />
+              )}
+            </Button>
+          </div>
+
+          {/* Desktop filter buttons */}
+          <div className="hidden md:flex items-center justify-center space-x-2">
             {["All", "Open", "Pending", "Resolved", "Overdue"].map((status) => (
               <Button
                 key={status}
@@ -213,7 +246,8 @@ export default function FeedbackPage() {
             ))}
           </div>
 
-          <div className="flex items-center space-x-4">
+          {/* Desktop user dropdown and submit feedback */}
+          <div className="hidden md:flex items-center space-x-4">
             <SubmitFeedbackDialog />
 
             <DropdownMenu>
@@ -221,24 +255,53 @@ export default function FeedbackPage() {
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="text-white bg-blue-950 rounded-full"
+                  className="text-white bg-blue-950 hover:bg-blue-900 rounded-full flex items-center justify-center h-10 w-10"
                 >
-                  <User className="h-5 w-5" />
+                  <Avatar className="h-9 w-9 border-2 border-white">
+                    <AvatarFallback className="bg-blue-950 text-white">
+                      {session?.username?.charAt(0).toUpperCase() || "U"}
+                    </AvatarFallback>
+                  </Avatar>
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuContent
+                align="end"
+                className="w-64 p-2 bg-white rounded-lg shadow-lg"
+              >
                 {session?.isLoggedIn ? (
                   <>
-                    <DropdownMenuItem className="font-medium">
-                      {session.username}
+                    <div className="px-2 py-2 bg-blue-50 rounded-md mb-2">
+                      <p className="font-medium text-blue-950 text-lg">
+                        {session.username}
+                      </p>
+                      <p className="text-blue-700 text-sm">{session.email}</p>
+                      <p className="text-blue-500 text-xs mt-1">
+                        {session.personnelType || "User"}
+                      </p>
+                    </div>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem className="cursor-pointer hover:bg-blue-50 rounded-md p-2 mt-1">
+                      Profile Settings
                     </DropdownMenuItem>
-                    <DropdownMenuItem>{session.email}</DropdownMenuItem>
-                    <DropdownMenuItem onClick={handleLogout}>
+                    <DropdownMenuItem
+                      className="cursor-pointer hover:bg-blue-50 rounded-md p-2"
+                      onClick={() => setShowMoodDialog(true)}
+                    >
+                      Update Mood
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      onClick={handleLogout}
+                      className="cursor-pointer text-red-600 hover:bg-red-50 hover:text-red-700 rounded-md p-2 mt-1 font-medium"
+                    >
                       Logout
                     </DropdownMenuItem>
                   </>
                 ) : (
-                  <DropdownMenuItem asChild>
+                  <DropdownMenuItem
+                    asChild
+                    className="rounded-md p-2 hover:bg-blue-50"
+                  >
                     <Link href="/login">Login</Link>
                   </DropdownMenuItem>
                 )}
@@ -246,19 +309,142 @@ export default function FeedbackPage() {
             </DropdownMenu>
           </div>
         </div>
+
+        {/* Mobile menu */}
+        {isMobileMenuOpen && (
+          <div className="md:hidden mt-4 bg-gray-900 rounded-lg p-4 space-y-4 animate-fadeIn">
+            <div className="grid grid-cols-2 gap-2">
+              {["All", "Open", "Pending", "Resolved", "Overdue"].map(
+                (status) => (
+                  <Button
+                    key={status}
+                    variant={filter === status ? "default" : "ghost"}
+                    className={`${
+                      filter === status
+                        ? "bg-[#6CBE45] hover:bg-green-700 text-white"
+                        : "text-white hover:text-white hover:bg-gray-800"
+                    } w-full transition-all duration-200`}
+                    onClick={() => {
+                      setFilter(status);
+                      setIsMobileMenuOpen(false);
+                    }}
+                  >
+                    {status}
+                  </Button>
+                )
+              )}
+            </div>
+
+            <Button
+              onClick={() => {
+                document
+                  .querySelector<HTMLButtonElement>(
+                    '[data-submit-feedback-trigger="true"]'
+                  )
+                  ?.click();
+                setIsMobileMenuOpen(false);
+              }}
+              className="bg-[#6CBE45] hover:bg-green-700 text-white w-full flex items-center justify-center gap-2"
+            >
+              <PlusCircle className="h-4 w-4" />
+              <span>Submit Feedback</span>
+            </Button>
+
+            {session?.isLoggedIn ? (
+              <div className="bg-blue-900 rounded-lg p-3">
+                <div className="flex items-center gap-3">
+                  <Avatar className="h-10 w-10 border-2 border-white">
+                    <AvatarFallback className="bg-blue-950 text-white">
+                      {session?.username?.charAt(0).toUpperCase() || "U"}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div>
+                    <p className="font-medium text-white">
+                      {session?.username}
+                    </p>
+                    <p className="text-blue-200 text-sm">{session?.email}</p>
+                  </div>
+                </div>
+                <div className="mt-3 grid grid-cols-2 gap-2">
+                  <Button
+                    variant="outline"
+                    className="text-white border-white hover:bg-blue-800"
+                    onClick={() => {
+                      setShowMoodDialog(true);
+                      setIsMobileMenuOpen(false);
+                    }}
+                  >
+                    Update Mood
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="text-red-300 border-red-300 hover:bg-red-900 hover:text-white"
+                    onClick={() => {
+                      handleLogout();
+                      setIsMobileMenuOpen(false);
+                    }}
+                  >
+                    Logout
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <Button asChild className="w-full">
+                <Link href="/login">Login</Link>
+              </Button>
+            )}
+          </div>
+        )}
       </nav>
 
       <main className="max-w-5xl mx-auto py-8 px-4">
-        <div className="space-y-6">
-          {filteredFeedback.map((item) => (
-            <FeedbackCard
-              key={item._id}
-              feedback={item}
-              onUpdate={handleFeedbackUpdate}
-            />
-          ))}
-        </div>
+        {filteredFeedback.length > 0 ? (
+          <div className="space-y-6">
+            {filteredFeedback.map((item) => (
+              <FeedbackCard
+                key={item._id}
+                feedback={item}
+                onUpdate={handleFeedbackUpdate}
+              />
+            ))}
+          </div>
+        ) : (
+          <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
+            <div className="bg-gray-800 rounded-lg p-6 max-w-md">
+              <h3 className="text-xl font-medium text-white mb-2">
+                No feedback found
+              </h3>
+              <p className="text-gray-300 mb-4">
+                There are no feedback items matching your current filter.
+              </p>
+              {filter !== "All" && (
+                <Button
+                  onClick={() => setFilter("All")}
+                  className="bg-[#6CBE45] hover:bg-green-700 text-white"
+                >
+                  View All Feedback
+                </Button>
+              )}
+            </div>
+          </div>
+        )}
       </main>
+
+      {/* Mobile submit feedback button (fixed at bottom) */}
+      <div className="md:hidden fixed bottom-6 right-6">
+        <Button
+          onClick={() =>
+            document
+              .querySelector<HTMLButtonElement>(
+                '[data-submit-feedback-trigger="true"]'
+              )
+              ?.click()
+          }
+          className="bg-[#6CBE45] hover:bg-green-700 text-white rounded-full h-14 w-14 shadow-lg flex items-center justify-center"
+        >
+          <PlusCircle className="h-6 w-6" />
+        </Button>
+      </div>
 
       <Dialog open={showMoodDialog} onOpenChange={setShowMoodDialog}>
         <DialogContent>
