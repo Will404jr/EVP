@@ -36,7 +36,6 @@ interface FeedbackItem {
   possibleSolution: string;
   submittedBy: string | null;
   assignedTo: string | null;
-  status: "Open" | "Resolved" | "Pending" | "Overdue";
   likes: string[];
   dislikes: string[];
   comments: { username: string; comment: string; createdAt: Date }[];
@@ -56,16 +55,6 @@ export function AdminFeedbackCard({
 }: AdminFeedbackCardProps) {
   const [showComments, setShowComments] = useState(false);
   const [newComment, setNewComment] = useState("");
-
-  const getStatusColor = (status: string) => {
-    const colors = {
-      Open: "bg-blue-500",
-      Resolved: "bg-green-500",
-      Pending: "bg-yellow-500",
-      Overdue: "bg-red-500",
-    };
-    return colors[status as keyof typeof colors] || "bg-gray-500";
-  };
 
   const handleApprove = async () => {
     await onUpdate(feedback._id, { action: "approve" });
@@ -103,20 +92,13 @@ export function AdminFeedbackCard({
               </div>
             </div>
           </div>
-          <Badge
-            className={`${getStatusColor(
-              feedback.status
-            )} text-white px-4 py-1 rounded-full`}
-          >
-            {feedback.status}
-          </Badge>
         </div>
       </CardHeader>
 
       <CardContent className="pt-6 pb-4">
         <div className="grid grid-cols-2 gap-8">
           <div>
-            <h4 className="font-semibold text-gray-900 mb-2">Concern</h4>
+            <h4 className="font-semibold text-gray-900 mb-2">Comment</h4>
             <p className="text-gray-700 bg-gray-50 p-4 rounded-lg min-h-[100px]">
               {feedback.concern}
             </p>

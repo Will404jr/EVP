@@ -15,6 +15,7 @@ export async function POST(req: NextRequest) {
     session.username = user.username;
     session.email = user.email;
     session.personnelType = user.personnelType;
+    session.department = user.department;
     session.expiresAt = Date.now() + 24 * 60 * 60 * 1000; // 24 hours from now
 
     await session.save();
@@ -24,6 +25,7 @@ export async function POST(req: NextRequest) {
       username: user.username,
       email: user.email,
       personnelType: user.personnelType,
+      department: user.department,
     });
   } else {
     return NextResponse.json({ error: "User not found" }, { status: 404 });

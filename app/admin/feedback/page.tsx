@@ -9,8 +9,7 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
-import { User, Menu, X, Search, BarChart } from "lucide-react";
-import Link from "next/link";
+import { Menu, X, Search, BarChart } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { AdminFeedbackCard } from "@/components/AdminFeedbackCard";
 import { users } from "@/lib/user";
@@ -46,25 +45,23 @@ interface FeedbackItem {
   };
 }
 
+interface MoodItem {
+  _id: string;
+  mood: "good" | "fair" | "bad";
+  username: string;
+  department: string;
+  createdAt: string;
+}
+
 export default function AdminFeedbackPage() {
   const [feedback, setFeedback] = useState<FeedbackItem[]>([]);
-  const [filter, setFilter] = useState("All");
   const [session, setSession] = useState<SessionData | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [isAnalysisDrawerOpen, setIsAnalysisDrawerOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isSearchExpanded, setIsSearchExpanded] = useState(false);
+  const [moodData, setMoodData] = useState<MoodItem[]>([]);
   const router = useRouter();
-
-  const checkFeedbackValidity = useCallback((feedbackItem: FeedbackItem) => {
-    const currentDate = new Date();
-    const endDate = new Date(feedbackItem.validity.endDate);
-
-    if (currentDate > endDate && feedbackItem.status !== "Resolved") {
-      return { ...feedbackItem, status: "Overdue" };
-    }
-    return feedbackItem;
-  }, []);
 
   const updateFeedbackStatus = useCallback(
     async (id: string, status: string) => {
@@ -87,15 +84,19 @@ export default function AdminFeedbackPage() {
   const fetchFeedback = useCallback(async () => {
     const res = await fetch("/api/feedback");
     const data = await res.json();
-    const updatedFeedback = data.map((item: FeedbackItem) => {
-      const checkedItem = checkFeedbackValidity(item);
-      if (checkedItem.status !== item.status) {
-        updateFeedbackStatus(checkedItem._id, checkedItem.status);
-      }
-      return checkedItem;
-    });
-    setFeedback(updatedFeedback);
-  }, [checkFeedbackValidity, updateFeedbackStatus]);
+    setFeedback(data);
+  }, []);
+
+  // Function to fetch mood data
+  const fetchMoodData = useCallback(async () => {
+    try {
+      const response = await fetch("/api/getMood");
+      const data = await response.json();
+      setMoodData(data);
+    } catch (error) {
+      console.error("Failed to fetch mood data:", error);
+    }
+  }, []);
 
   useEffect(() => {
     const fetchSession = async () => {
@@ -142,11 +143,10 @@ export default function AdminFeedbackPage() {
   };
 
   const filteredFeedback = feedback.filter((item) => {
-    const matchesFilter = filter === "All" || item.status === filter;
-    const matchesSearch =
+    return (
       item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.concern.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesFilter && matchesSearch;
+      item.concern.toLowerCase().includes(searchQuery.toLowerCase())
+    );
   });
 
   const handleFeedbackUpdate = async (id: string, data: any) => {
@@ -168,6 +168,12 @@ export default function AdminFeedbackPage() {
     }
   };
 
+  // Function to handle opening the analysis drawer
+  const handleOpenAnalysis = () => {
+    fetchMoodData(); // Fetch mood data when opening drawer
+    setIsAnalysisDrawerOpen(true);
+  };
+
   if (session?.personnelType !== "Admin") {
     return <div>Access Denied. Admin only.</div>;
   }
@@ -179,7 +185,7 @@ export default function AdminFeedbackPage() {
           {/* Logo and title - always visible */}
           <div className="flex items-center">
             <div className="text-xl sm:text-2xl font-bold text-white">
-              EVP Admin
+              Your Voice Admin
             </div>
           </div>
 
@@ -207,32 +213,14 @@ export default function AdminFeedbackPage() {
             </Button>
           </div>
 
-          {/* Desktop filter buttons */}
-          <div className="hidden md:flex items-center justify-center space-x-2">
-            {["All", "Open", "Pending", "Resolved", "Overdue"].map((status) => (
-              <Button
-                key={status}
-                variant={filter === status ? "default" : "ghost"}
-                className={`${
-                  filter === status
-                    ? "bg-[#6CBE45] hover:bg-green-700 text-white rounded-full"
-                    : "text-gray-300 hover:text-white hover:bg-gray-800 rounded-full"
-                } transition-all duration-200`}
-                onClick={() => setFilter(status)}
-              >
-                {status}
-              </Button>
-            ))}
-          </div>
-
           {/* Desktop user dropdown */}
           <div className="hidden md:flex items-center space-x-4">
             <Button
-              onClick={() => setIsAnalysisDrawerOpen(true)}
+              onClick={handleOpenAnalysis}
               className="bg-[#6CBE45] hover:bg-green-700 text-white flex items-center gap-2"
             >
               <BarChart className="h-4 w-4" />
-              <span>Analysis</span>
+              <span>Mood Analysis</span>
             </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -294,37 +282,15 @@ export default function AdminFeedbackPage() {
         {/* Mobile menu */}
         {isMobileMenuOpen && (
           <div className="md:hidden mt-4 bg-gray-900 rounded-lg p-4 space-y-4 animate-fadeIn">
-            <div className="grid grid-cols-2 gap-2">
-              {["All", "Open", "Pending", "Resolved", "Overdue"].map(
-                (status) => (
-                  <Button
-                    key={status}
-                    variant={filter === status ? "default" : "ghost"}
-                    className={`${
-                      filter === status
-                        ? "bg-[#6CBE45] hover:bg-green-700 text-white"
-                        : "text-gray-300 hover:text-white hover:bg-gray-800"
-                    } w-full transition-all duration-200`}
-                    onClick={() => {
-                      setFilter(status);
-                      setIsMobileMenuOpen(false);
-                    }}
-                  >
-                    {status}
-                  </Button>
-                )
-              )}
-            </div>
-
             <Button
               onClick={() => {
-                setIsAnalysisDrawerOpen(true);
+                handleOpenAnalysis();
                 setIsMobileMenuOpen(false);
               }}
               className="bg-[#6CBE45] hover:bg-green-700 text-white w-full flex items-center justify-center gap-2"
             >
               <BarChart className="h-4 w-4" />
-              <span>Analysis</span>
+              <span>Mood Analysis</span>
             </Button>
 
             <div className="bg-blue-900 rounded-lg p-3">
@@ -377,11 +343,11 @@ export default function AdminFeedbackPage() {
           {/* Desktop Analysis button is in the navbar */}
           <div className="md:hidden w-full">
             <Button
-              onClick={() => setIsAnalysisDrawerOpen(true)}
+              onClick={handleOpenAnalysis}
               className="bg-[#6CBE45] hover:bg-green-700 text-white w-full flex items-center justify-center gap-2"
             >
               <BarChart className="h-4 w-4" />
-              <span>Analysis</span>
+              <span>Mood Analysis</span>
             </Button>
           </div>
         </div>
@@ -398,16 +364,17 @@ export default function AdminFeedbackPage() {
             ))
           ) : (
             <div className="text-center py-10 text-gray-400">
-              No feedback matches your current filters
+              No feedback matches your search
             </div>
           )}
         </div>
       </main>
 
+      {/* Updated AnalysisDrawer for mood data */}
       <AnalysisDrawer
         isOpen={isAnalysisDrawerOpen}
         onClose={() => setIsAnalysisDrawerOpen(false)}
-        feedback={feedback}
+        moods={moodData}
       />
     </div>
   );

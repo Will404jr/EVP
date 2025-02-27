@@ -27,16 +27,16 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   await dbConnect();
-  const { mood, username } = await request.json();
+  const { mood, username, department } = await request.json();
 
-  if (!mood || !username) {
+  if (!mood || !username || !department) {
     return NextResponse.json(
-      { error: "Mood and username are required" },
+      { error: "Mood, username and department are required" },
       { status: 400 }
     );
   }
 
-  const newMood = new Mood({ mood, username });
+  const newMood = new Mood({ mood, username, department });
   await newMood.save();
 
   return NextResponse.json({

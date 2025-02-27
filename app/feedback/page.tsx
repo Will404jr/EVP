@@ -9,7 +9,7 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
-import { User, Menu, X, PlusCircle } from "lucide-react";
+import { Menu, X, PlusCircle } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import SubmitFeedbackDialog from "@/components/submit-feedback-dialogue";
@@ -29,6 +29,7 @@ interface SessionData {
   username?: string;
   email?: string;
   personnelType?: string;
+  department?: string;
 }
 
 interface FeedbackItem {
@@ -39,39 +40,32 @@ interface FeedbackItem {
   possibleSolution: string;
   submittedBy: string | null;
   assignedTo: string | null;
-  status: "Open" | "Resolved" | "Pending" | "Overdue";
   likes: string[];
   dislikes: string[];
   comments: { username: string; comment: string; createdAt: Date }[];
   approved: boolean;
-  validity: {
-    startDate: Date;
-    endDate: Date;
-  };
+  createdAt: string;
+  updatedAt: string;
 }
 
 export default function FeedbackPage() {
   const [feedback, setFeedback] = useState<FeedbackItem[]>([]);
-  const [filter, setFilter] = useState("All");
   const [session, setSession] = useState<SessionData | null>(null);
   const [showMoodDialog, setShowMoodDialog] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [moodChecked, setMoodChecked] = useState(false);
   const router = useRouter();
 
   const fetchSession = useCallback(async () => {
-    const res = await fetch("/api/session");
-    const data = await res.json();
-    setSession(data);
-  }, []);
-
-  const checkFeedbackValidity = useCallback((feedbackItem: FeedbackItem) => {
-    const currentDate = new Date();
-    const endDate = new Date(feedbackItem.validity.endDate);
-
-    if (currentDate > endDate && feedbackItem.status !== "Resolved") {
-      return { ...feedbackItem, status: "Overdue" };
+    try {
+      const res = await fetch("/api/session");
+      const data = await res.json();
+      setSession(data);
+      return data;
+    } catch (error) {
+      console.error("Error fetching session:", error);
+      return null;
     }
-    return feedbackItem;
   }, []);
 
   const updateFeedbackStatus = useCallback(
@@ -93,48 +87,51 @@ export default function FeedbackPage() {
   );
 
   const fetchFeedback = useCallback(async () => {
-    const res = await fetch("/api/feedback");
-    const data = await res.json();
-    // Filter out unapproved feedback items and check validity
-    const approvedFeedback = data
-      .filter((item: FeedbackItem) => item.approved)
-      .map((item: FeedbackItem) => {
-        const checkedItem = checkFeedbackValidity(item);
-        if (checkedItem.status !== item.status) {
-          updateFeedbackStatus(checkedItem._id, checkedItem.status);
-        }
-        return checkedItem;
-      });
-    setFeedback(approvedFeedback);
-  }, [checkFeedbackValidity, updateFeedbackStatus]);
+    try {
+      const res = await fetch("/api/feedback");
+      const data = await res.json();
+      // Filter out unapproved feedback items
+      const approvedFeedback = data.filter(
+        (item: FeedbackItem) => item.approved
+      );
+      setFeedback(approvedFeedback);
+    } catch (error) {
+      console.error("Error fetching feedback:", error);
+    }
+  }, []);
 
-  const checkMoodData = useCallback(async () => {
-    if (session?.isLoggedIn && session.username) {
-      const res = await fetch(`/api/mood?username=${session.username}`);
+  const checkMoodData = useCallback(async (username: string) => {
+    try {
+      const res = await fetch(`/api/mood?username=${username}`);
       const data = await res.json();
       if (!data.mood) {
         setShowMoodDialog(true);
       }
+      setMoodChecked(true);
+    } catch (error) {
+      console.error("Error checking mood data:", error);
     }
-  }, [session]);
+  }, []);
 
   useEffect(() => {
-    fetchSession();
+    // Initial data loading
+    const initializeData = async () => {
+      const sessionData = await fetchSession();
+      await fetchFeedback();
 
-    // Set up polling for fetchFeedback (every 10 seconds)
-    const feedbackInterval = setInterval(fetchFeedback, 10000);
+      // Only check mood if user is logged in
+      if (sessionData?.isLoggedIn && sessionData.username) {
+        await checkMoodData(sessionData.username);
+      }
+    };
 
-    // Set up polling for checkMoodData (every 30 seconds)
-    const moodInterval = setInterval(checkMoodData, 30000);
+    initializeData();
 
-    // Initial fetch
-    fetchFeedback();
-    checkMoodData();
+    // Only poll for feedback (less frequently - every 30 seconds)
+    const feedbackInterval = setInterval(fetchFeedback, 30000);
 
-    // Clean up intervals on component unmount
     return () => {
       clearInterval(feedbackInterval);
-      clearInterval(moodInterval);
     };
   }, [fetchSession, fetchFeedback, checkMoodData]);
 
@@ -171,7 +168,11 @@ export default function FeedbackPage() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ mood, username: session.username }),
+        body: JSON.stringify({
+          mood,
+          username: session.username,
+          department: session.department,
+        }),
       });
       if (res.ok) {
         setShowMoodDialog(false);
@@ -179,9 +180,9 @@ export default function FeedbackPage() {
     }
   };
 
-  const filteredFeedback = feedback.filter((item) => {
-    if (filter === "All") return true;
-    return item.status === filter;
+  // Sort feedback by date (newest first)
+  const sortedFeedback = [...feedback].sort((a, b) => {
+    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
   });
 
   const handleFeedbackUpdate = async (id: string, data: any) => {
@@ -209,7 +210,9 @@ export default function FeedbackPage() {
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           {/* Logo and title - always visible */}
           <div className="flex items-center">
-            <div className="text-xl sm:text-2xl font-bold text-white">EVP</div>
+            <div className="text-xl sm:text-2xl font-bold text-white">
+              Your Voice
+            </div>
           </div>
 
           {/* Mobile menu button */}
@@ -226,24 +229,6 @@ export default function FeedbackPage() {
                 <Menu className="h-5 w-5" />
               )}
             </Button>
-          </div>
-
-          {/* Desktop filter buttons */}
-          <div className="hidden md:flex items-center justify-center space-x-2">
-            {["All", "Open", "Pending", "Resolved", "Overdue"].map((status) => (
-              <Button
-                key={status}
-                variant={filter === status ? "default" : "ghost"}
-                className={`${
-                  filter === status
-                    ? "bg-[#6CBE45] hover:bg-green-700 text-white rounded-full"
-                    : "text-white hover:text-white hover:bg-gray-800 rounded-full"
-                } transition-all duration-200`}
-                onClick={() => setFilter(status)}
-              >
-                {status}
-              </Button>
-            ))}
           </div>
 
           {/* Desktop user dropdown and submit feedback */}
@@ -313,28 +298,6 @@ export default function FeedbackPage() {
         {/* Mobile menu */}
         {isMobileMenuOpen && (
           <div className="md:hidden mt-4 bg-gray-900 rounded-lg p-4 space-y-4 animate-fadeIn">
-            <div className="grid grid-cols-2 gap-2">
-              {["All", "Open", "Pending", "Resolved", "Overdue"].map(
-                (status) => (
-                  <Button
-                    key={status}
-                    variant={filter === status ? "default" : "ghost"}
-                    className={`${
-                      filter === status
-                        ? "bg-[#6CBE45] hover:bg-green-700 text-white"
-                        : "text-white hover:text-white hover:bg-gray-800"
-                    } w-full transition-all duration-200`}
-                    onClick={() => {
-                      setFilter(status);
-                      setIsMobileMenuOpen(false);
-                    }}
-                  >
-                    {status}
-                  </Button>
-                )
-              )}
-            </div>
-
             <Button
               onClick={() => {
                 document
@@ -398,9 +361,9 @@ export default function FeedbackPage() {
       </nav>
 
       <main className="max-w-5xl mx-auto py-8 px-4">
-        {filteredFeedback.length > 0 ? (
+        {sortedFeedback.length > 0 ? (
           <div className="space-y-6">
-            {filteredFeedback.map((item) => (
+            {sortedFeedback.map((item) => (
               <FeedbackCard
                 key={item._id}
                 feedback={item}
@@ -412,19 +375,11 @@ export default function FeedbackPage() {
           <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
             <div className="bg-gray-800 rounded-lg p-6 max-w-md">
               <h3 className="text-xl font-medium text-white mb-2">
-                No feedback found
+                No feedback available
               </h3>
               <p className="text-gray-300 mb-4">
-                There are no feedback items matching your current filter.
+                There are no feedback items to display at this time.
               </p>
-              {filter !== "All" && (
-                <Button
-                  onClick={() => setFilter("All")}
-                  className="bg-[#6CBE45] hover:bg-green-700 text-white"
-                >
-                  View All Feedback
-                </Button>
-              )}
             </div>
           </div>
         )}

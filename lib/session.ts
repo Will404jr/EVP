@@ -7,6 +7,7 @@ export interface SessionData {
   username?: string;
   email?: string;
   personnelType?: string;
+  department?: string;
   expiresAt?: number; // Add expiration time
   destroy: () => Promise<void>;
   save: () => Promise<void>;
