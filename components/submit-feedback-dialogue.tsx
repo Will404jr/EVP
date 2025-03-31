@@ -44,11 +44,19 @@ import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 
 const departments = [
-  "IT Department",
-  "HR Department",
-  "Finance Department",
-  "Marketing Department",
-  "Operations Department",
+  "People & Culture",
+  "Marketing and Corporate Affairs",
+  "Finance",
+  "TES",
+  "Commercial",
+  "ERM",
+  "E & G",
+  "Strategy",
+  "PDU",
+  "MD/DMDs Office",
+  "Legal & Board Affairs",
+  "Investments",
+  "Internal Audit",
 ];
 
 export default function SubmitFeedbackDialog() {
