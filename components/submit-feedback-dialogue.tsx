@@ -127,13 +127,13 @@ export default function SubmitFeedbackDialog() {
             improve.
           </p>
         </DialogHeader>
-        <Separator />
+        <Separator className="bg-blue-600" />
         <div className="flex flex-col h-full max-h-[calc(90vh-180px)]">
           <div className="flex-1 overflow-y-auto px-6">
             <Form {...form}>
               <form
                 onSubmit={form.handleSubmit(onSubmit)}
-                className="space-y-4 py-4"
+                className="space-y-4 py-4 "
               >
                 <div className="grid gap-4 sm:grid-cols-2">
                   <FormField
@@ -269,7 +269,7 @@ export default function SubmitFeedbackDialog() {
             <Button
               type="submit"
               onClick={form.handleSubmit(onSubmit)}
-              className="h-9 px-8"
+              className="h-9 px-8 bg-[#6CBE45] text-white"
               disabled={isSubmitting}
             >
               {isSubmitting ? "Submitting..." : "Submit Feedback"}

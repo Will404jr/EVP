@@ -265,9 +265,9 @@ export default function FeedbackPage() {
                       </p>
                     </div>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem className="cursor-pointer hover:bg-blue-50 rounded-md p-2 mt-1">
+                    {/* <DropdownMenuItem className="cursor-pointer hover:bg-blue-50 rounded-md p-2 mt-1">
                       Profile Settings
-                    </DropdownMenuItem>
+                    </DropdownMenuItem> */}
                     <DropdownMenuItem
                       className="cursor-pointer hover:bg-blue-50 rounded-md p-2"
                       onClick={() => setShowMoodDialog(true)}
