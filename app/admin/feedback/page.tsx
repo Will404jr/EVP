@@ -12,7 +12,6 @@ import {
 import { Menu, X, Search, BarChart } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { AdminFeedbackCard } from "@/components/AdminFeedbackCard";
-import { users } from "@/lib/user";
 import { Input } from "@/components/ui/input";
 import { AnalysisDrawer } from "@/components/AnalysisDrawer";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -25,18 +24,24 @@ interface SessionData {
   personnelType?: string;
 }
 
+interface Comment {
+  userId: string; // Changed from username
+  comment: string;
+  createdAt: Date;
+}
+
 interface FeedbackItem {
   _id: string;
   title: string;
   department: string;
   concern: string;
   possibleSolution: string;
-  submittedBy: string | null;
-  assignedTo: string | null;
+  submittedBy: string | null; // Now stores user ID
+  assignedTo: string | null; // Now stores user ID
   status: "Open" | "Resolved" | "Pending" | "Overdue";
-  likes: string[];
-  dislikes: string[];
-  comments: { username: string; comment: string; createdAt: Date }[];
+  likes: string[]; // Array of user IDs
+  dislikes: string[]; // Array of user IDs
+  comments: Comment[];
   approved: boolean;
   createdAt: string;
   validity: {
@@ -48,7 +53,7 @@ interface FeedbackItem {
 interface MoodItem {
   _id: string;
   mood: "good" | "fair" | "bad";
-  username: string;
+  userId: string; // Changed from username
   department: string;
   createdAt: string;
 }
@@ -61,6 +66,8 @@ export default function AdminFeedbackPage() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isSearchExpanded, setIsSearchExpanded] = useState(false);
   const [moodData, setMoodData] = useState<MoodItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isPolling, setIsPolling] = useState(false);
   const router = useRouter();
 
   const updateFeedbackStatus = useCallback(
@@ -82,29 +89,45 @@ export default function AdminFeedbackPage() {
   );
 
   const fetchFeedback = useCallback(async () => {
-    const res = await fetch("/api/feedback");
-    const data = await res.json();
-    setFeedback(data);
+    try {
+      setIsPolling(true);
+      const res = await fetch("/api/feedback");
+      const data = await res.json();
+      setFeedback(data);
+    } catch (error) {
+      console.error("Error fetching feedback:", error);
+    } finally {
+      setIsPolling(false);
+      setIsLoading(false);
+    }
   }, []);
 
   // Function to fetch mood data
   const fetchMoodData = useCallback(async () => {
     try {
+      setIsLoading(true);
       const response = await fetch("/api/getMood");
       const data = await response.json();
       setMoodData(data);
     } catch (error) {
       console.error("Failed to fetch mood data:", error);
+    } finally {
+      setIsLoading(false);
     }
   }, []);
 
   useEffect(() => {
     const fetchSession = async () => {
-      const res = await fetch("/api/session");
-      const data = await res.json();
-      setSession(data);
+      try {
+        const res = await fetch("/api/session");
+        const data = await res.json();
+        setSession(data);
+      } catch (error) {
+        console.error("Error fetching session:", error);
+      }
     };
 
+    setIsLoading(true);
     fetchSession();
     fetchFeedback();
 
@@ -174,7 +197,7 @@ export default function AdminFeedbackPage() {
     setIsAnalysisDrawerOpen(true);
   };
 
-  if (session?.personnelType !== "Admin") {
+  if (session?.personnelType !== "Md") {
     return <div>Access Denied. Admin only.</div>;
   }
 
@@ -352,22 +375,28 @@ export default function AdminFeedbackPage() {
           </div>
         </div>
 
-        <div className="space-y-6">
-          {filteredFeedback.length > 0 ? (
-            filteredFeedback.map((item) => (
-              <AdminFeedbackCard
-                key={item._id}
-                feedback={item}
-                onUpdate={handleFeedbackUpdate}
-                users={users}
-              />
-            ))
-          ) : (
-            <div className="text-center py-10 text-gray-400">
-              No feedback matches your search
-            </div>
-          )}
-        </div>
+        {isLoading && !isPolling ? (
+          <div className="flex justify-center items-center py-20">
+            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-white"></div>
+          </div>
+        ) : (
+          <div className="space-y-6">
+            {filteredFeedback.length > 0 ? (
+              filteredFeedback.map((item) => (
+                <AdminFeedbackCard
+                  key={item._id}
+                  feedback={item}
+                  onUpdate={handleFeedbackUpdate}
+                  users={[]} // This prop is no longer needed as we fetch users from Azure AD
+                />
+              ))
+            ) : (
+              <div className="text-center py-10 text-gray-400">
+                No feedback matches your search
+              </div>
+            )}
+          </div>
+        )}
       </main>
 
       {/* Updated AnalysisDrawer for mood data */}

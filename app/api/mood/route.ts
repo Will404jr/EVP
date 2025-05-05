@@ -5,20 +5,17 @@ import dbConnect from "@/lib/db";
 export async function GET(request: Request) {
   await dbConnect();
   const { searchParams } = new URL(request.url);
-  const username = searchParams.get("username");
+  const userId = searchParams.get("userId"); // Changed from username to userId
 
-  if (!username) {
-    return NextResponse.json(
-      { error: "Username is required" },
-      { status: 400 }
-    );
+  if (!userId) {
+    return NextResponse.json({ error: "User ID is required" }, { status: 400 });
   }
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
   const mood = await Mood.findOne({
-    username,
+    userId, // Changed from username to userId
     createdAt: { $gte: today },
   });
 
@@ -27,16 +24,16 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   await dbConnect();
-  const { mood, username, department } = await request.json();
+  const { mood, userId, department } = await request.json(); // Changed from username to userId
 
-  if (!mood || !username || !department) {
+  if (!mood || !userId || !department) {
     return NextResponse.json(
-      { error: "Mood, username and department are required" },
+      { error: "Mood, userId and department are required" }, // Changed from username to userId
       { status: 400 }
     );
   }
 
-  const newMood = new Mood({ mood, username, department });
+  const newMood = new Mood({ mood, userId, department }); // Changed from username to userId
   await newMood.save();
 
   return NextResponse.json({

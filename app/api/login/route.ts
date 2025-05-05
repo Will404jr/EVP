@@ -1,33 +1,76 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/session";
-import { type User, users } from "@/lib/user"; // Import both User type and users array
+import { users as adminUsers } from "@/lib/adminlogin";
 
 export async function POST(req: NextRequest) {
-  const session = await getSession();
-  const body = await req.json();
-  const { username } = body;
+  try {
+    console.log("Processing login request");
+    const session = await getSession();
+    const body = await req.json();
+    const { username, password } = body;
 
-  const user = users.find((u) => u.username === username);
+    console.log(`Login attempt for username: ${username}`);
 
-  if (user) {
-    session.id = user.id;
-    session.isLoggedIn = true;
-    session.username = user.username;
-    session.email = user.email;
-    session.personnelType = user.personnelType;
-    session.department = user.department;
-    session.expiresAt = Date.now() + 24 * 60 * 60 * 1000; // 24 hours from now
+    // Check admin users
+    const adminUser = adminUsers.find((u) => u.username === username);
+    if (adminUser) {
+      if (adminUser.password === password) {
+        console.log("Admin user authenticated successfully");
 
-    await session.save();
+        // Set session data
+        session.id = adminUser.id;
+        session.isLoggedIn = true;
+        session.username = adminUser.username;
+        session.email = adminUser.email;
+        session.personnelType = "Md";
+        session.expiresAt = Date.now() + 24 * 60 * 60 * 1000; // 24 hours
 
-    return NextResponse.json({
-      id: user.id,
-      username: user.username,
-      email: user.email,
-      personnelType: user.personnelType,
-      department: user.department,
-    });
-  } else {
-    return NextResponse.json({ error: "User not found" }, { status: 404 });
+        console.log("Session before save:", {
+          id: session.id,
+          username: session.username,
+          email: session.email,
+          personnelType: session.personnelType,
+          isLoggedIn: session.isLoggedIn,
+          expiresAt: session.expiresAt,
+        });
+
+        try {
+          await session.save();
+          console.log("Session saved successfully");
+        } catch (saveError) {
+          console.error("Error saving session:", saveError);
+          return NextResponse.json(
+            { error: "Session save failed" },
+            { status: 500 }
+          );
+        }
+
+        return NextResponse.json({
+          id: adminUser.id,
+          username: adminUser.username,
+          email: adminUser.email,
+          personnelType: "Md",
+        });
+      } else {
+        console.log("Invalid password for admin user");
+        return NextResponse.json(
+          { error: "Invalid credentials" },
+          { status: 401 }
+        );
+      }
+    }
+
+    // If not an admin user, return error - staff should use SAML
+    console.log("User not found or not an admin");
+    return NextResponse.json(
+      { error: "Invalid credentials. Staff should use SSO login." },
+      { status: 401 }
+    );
+  } catch (error) {
+    console.error("Error in login route:", error);
+    return NextResponse.json(
+      { error: "An error occurred during login" },
+      { status: 500 }
+    );
   }
 }

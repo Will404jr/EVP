@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import { Mood } from "@/lib/models/mood";
 import dbConnect from "@/lib/db";
 

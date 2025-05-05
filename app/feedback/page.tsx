@@ -32,6 +32,12 @@ interface SessionData {
   department?: string;
 }
 
+interface Comment {
+  userId: string;
+  comment: string;
+  createdAt: Date;
+}
+
 interface FeedbackItem {
   _id: string;
   title: string;
@@ -42,9 +48,9 @@ interface FeedbackItem {
   assignedTo: string | null;
   likes: string[];
   dislikes: string[];
-  comments: { username: string; comment: string; createdAt: Date }[];
+  comments: Comment[];
   approved: boolean;
-  createdAt: string;
+  createdAt: Date;
   updatedAt: string;
 }
 
@@ -54,6 +60,8 @@ export default function FeedbackPage() {
   const [showMoodDialog, setShowMoodDialog] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [moodChecked, setMoodChecked] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isPolling, setIsPolling] = useState(false);
   const router = useRouter();
 
   const fetchSession = useCallback(async () => {
@@ -88,21 +96,28 @@ export default function FeedbackPage() {
 
   const fetchFeedback = useCallback(async () => {
     try {
+      setIsPolling(true);
       const res = await fetch("/api/feedback");
       const data = await res.json();
       // Filter out unapproved feedback items
-      const approvedFeedback = data.filter(
-        (item: FeedbackItem) => item.approved
-      );
+      const approvedFeedback = data
+        .filter((item: FeedbackItem) => item.approved)
+        .map((item: FeedbackItem) => ({
+          ...item,
+          createdAt: new Date(item.createdAt),
+        }));
       setFeedback(approvedFeedback);
     } catch (error) {
       console.error("Error fetching feedback:", error);
+    } finally {
+      setIsPolling(false);
+      setIsLoading(false);
     }
   }, []);
 
-  const checkMoodData = useCallback(async (username: string) => {
+  const checkMoodData = useCallback(async (userId: string) => {
     try {
-      const res = await fetch(`/api/mood?username=${username}`);
+      const res = await fetch(`/api/mood?userId=${userId}`);
       const data = await res.json();
       if (!data.mood) {
         setShowMoodDialog(true);
@@ -116,12 +131,13 @@ export default function FeedbackPage() {
   useEffect(() => {
     // Initial data loading
     const initializeData = async () => {
+      setIsLoading(true);
       const sessionData = await fetchSession();
       await fetchFeedback();
 
       // Only check mood if user is logged in
-      if (sessionData?.isLoggedIn && sessionData.username) {
-        await checkMoodData(sessionData.username);
+      if (sessionData?.isLoggedIn && sessionData.id) {
+        await checkMoodData(sessionData.id);
       }
     };
 
@@ -162,7 +178,7 @@ export default function FeedbackPage() {
   };
 
   const handleMoodSubmit = async (mood: string) => {
-    if (session?.username) {
+    if (session?.id) {
       const res = await fetch("/api/mood", {
         method: "POST",
         headers: {
@@ -170,7 +186,7 @@ export default function FeedbackPage() {
         },
         body: JSON.stringify({
           mood,
-          username: session.username,
+          userId: session.id,
           department: session.department,
         }),
       });
@@ -265,9 +281,6 @@ export default function FeedbackPage() {
                       </p>
                     </div>
                     <DropdownMenuSeparator />
-                    {/* <DropdownMenuItem className="cursor-pointer hover:bg-blue-50 rounded-md p-2 mt-1">
-                      Profile Settings
-                    </DropdownMenuItem> */}
                     <DropdownMenuItem
                       className="cursor-pointer hover:bg-blue-50 rounded-md p-2"
                       onClick={() => setShowMoodDialog(true)}
@@ -361,7 +374,11 @@ export default function FeedbackPage() {
       </nav>
 
       <main className="max-w-5xl mx-auto py-8 px-4">
-        {sortedFeedback.length > 0 ? (
+        {isLoading ? (
+          <div className="flex justify-center items-center py-20">
+            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-white"></div>
+          </div>
+        ) : sortedFeedback.length > 0 ? (
           <div className="space-y-6">
             {sortedFeedback.map((item) => (
               <FeedbackCard

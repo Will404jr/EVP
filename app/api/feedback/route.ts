@@ -9,6 +9,7 @@ export async function GET() {
     const feedback = await Feedback.find({}).sort({ createdAt: -1 });
     return NextResponse.json(feedback);
   } catch (error) {
+    console.error("Failed to fetch feedback:", error);
     return NextResponse.json(
       { error: "Failed to fetch feedback" },
       { status: 500 }
@@ -23,8 +24,8 @@ export async function POST(req: Request) {
     const data = await req.json();
 
     // Only set submittedBy if not anonymous and user is logged in
-    if (!data.anonymous && session.username) {
-      data.submittedBy = session.username;
+    if (!data.anonymous && session.isLoggedIn) {
+      data.submittedBy = session.id; // Use user ID instead of username
     } else {
       data.submittedBy = null; // Ensure it's null for anonymous submissions
     }
@@ -39,6 +40,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json(feedback);
   } catch (error) {
+    console.error("Failed to create feedback:", error);
     return NextResponse.json(
       { error: "Failed to create feedback" },
       { status: 500 }

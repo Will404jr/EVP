@@ -1,9 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
-import { CalendarIcon } from "lucide-react";
-import { format } from "date-fns";
 import { useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
@@ -32,36 +30,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Calendar } from "@/components/ui/calendar";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
 import { Switch } from "@/components/ui/switch";
 import { Card } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { cn } from "@/lib/utils";
-
-const departments = [
-  "People & Culture",
-  "Marketing and Corporate Affairs",
-  "Finance",
-  "TES",
-  "Commercial",
-  "ERM",
-  "E & G",
-  "Strategy",
-  "PDU",
-  "MD/DMDs Office",
-  "Legal & Board Affairs",
-  "Investments",
-  "Internal Audit",
-];
 
 export default function SubmitFeedbackDialog() {
   const [open, setOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [departments, setDepartments] = useState<string[]>([]);
+  const [isLoadingDepartments, setIsLoadingDepartments] = useState(false);
   const router = useRouter();
 
   const form = useForm({
@@ -73,6 +50,46 @@ export default function SubmitFeedbackDialog() {
       anonymous: false,
     },
   });
+
+  // Fetch departments from Azure AD
+  useEffect(() => {
+    const fetchDepartments = async () => {
+      if (open) {
+        setIsLoadingDepartments(true);
+        try {
+          const response = await fetch("/api/users/departments");
+          if (response.ok) {
+            const data = await response.json();
+            setDepartments(data.departments || []);
+          } else {
+            console.error("Failed to fetch departments");
+            // Fallback to default departments if API fails
+            setDepartments([
+              "People & Culture",
+              "Marketing and Corporate Affairs",
+              "Finance",
+              "TES",
+              "Commercial",
+              "ERM",
+              "E & G",
+              "Strategy",
+              "PDU",
+              "MD/DMDs Office",
+              "Legal & Board Affairs",
+              "Investments",
+              "Internal Audit",
+            ]);
+          }
+        } catch (error) {
+          console.error("Error fetching departments:", error);
+        } finally {
+          setIsLoadingDepartments(false);
+        }
+      }
+    };
+
+    fetchDepartments();
+  }, [open]);
 
   async function onSubmit(data: any) {
     setIsSubmitting(true);
@@ -100,7 +117,12 @@ export default function SubmitFeedbackDialog() {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="default" size="lg" className="gap-2 bg-[#6CBE45]">
+        <Button
+          variant="default"
+          size="lg"
+          className="gap-2 bg-[#6CBE45]"
+          data-submit-feedback-trigger="true"
+        >
           <svg
             xmlns="http://www.w3.org/2000/svg"
             width="16"
@@ -167,10 +189,17 @@ export default function SubmitFeedbackDialog() {
                         <Select
                           onValueChange={field.onChange}
                           value={field.value || ""}
+                          disabled={isLoadingDepartments}
                         >
                           <FormControl>
                             <SelectTrigger className="h-9">
-                              <SelectValue placeholder="Select department" />
+                              <SelectValue
+                                placeholder={
+                                  isLoadingDepartments
+                                    ? "Loading departments..."
+                                    : "Select department"
+                                }
+                              />
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>

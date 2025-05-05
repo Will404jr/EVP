@@ -8,7 +8,7 @@ const moodSchema = new mongoose.Schema(
       default: "fair",
       required: true,
     },
-    username: { type: String, required: true },
+    userId: { type: String, required: true }, // Changed from username to userId
     department: { type: String, required: true },
   },
   { timestamps: true }

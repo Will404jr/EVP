@@ -23,6 +23,7 @@ export async function GET(
     }
     return NextResponse.json(feedback);
   } catch (error) {
+    console.error("Failed to fetch feedback:", error);
     return NextResponse.json(
       { error: "Failed to fetch feedback" },
       { status: 500 }
@@ -56,41 +57,41 @@ export async function PUT(
     }
 
     if (data.action === "like") {
-      if (feedback.likes.includes(session.username)) {
+      if (feedback.likes.includes(session.id)) {
         feedback.likes = feedback.likes.filter(
-          (username: string) => username !== session.username
+          (userId: string) => userId !== session.id
         );
       } else {
-        feedback.likes.push(session.username);
+        feedback.likes.push(session.id);
         feedback.dislikes = feedback.dislikes.filter(
-          (username: string) => username !== session.username
+          (userId: string) => userId !== session.id
         );
       }
     } else if (data.action === "dislike") {
-      if (feedback.dislikes.includes(session.username)) {
+      if (feedback.dislikes.includes(session.id)) {
         feedback.dislikes = feedback.dislikes.filter(
-          (username: string) => username !== session.username
+          (userId: string) => userId !== session.id
         );
       } else {
-        feedback.dislikes.push(session.username);
+        feedback.dislikes.push(session.id);
         feedback.likes = feedback.likes.filter(
-          (username: string) => username !== session.username
+          (userId: string) => userId !== session.id
         );
       }
     } else if (data.action === "comment") {
       feedback.comments.push({
-        username: session.username,
+        userId: session.id, // Use user ID instead of username
         comment: data.comment,
         createdAt: new Date(),
       });
-    } else if (data.action === "approve" && session.personnelType === "Admin") {
+    } else if (data.action === "approve" && session.personnelType === "Md") {
       feedback.approved = true;
-    } else if (data.action === "assign" && session.personnelType === "Admin") {
+    } else if (data.action === "assign" && session.personnelType === "Md") {
       feedback.assignedTo = data.assignedTo;
       feedback.status = "Pending";
     } else if (
       data.action === "resolve" &&
-      feedback.assignedTo === session.username
+      feedback.assignedTo === session.id
     ) {
       feedback.status = "Resolved";
     } else {
@@ -101,6 +102,7 @@ export async function PUT(
     await feedback.save();
     return NextResponse.json(feedback);
   } catch (error) {
+    console.error("Failed to update feedback:", error);
     return NextResponse.json(
       { error: "Failed to update feedback" },
       { status: 500 }
@@ -117,7 +119,7 @@ export async function DELETE(
     await dbConnect();
     const session = await getSession();
 
-    if (session.personnelType !== "Admin") {
+    if (session.personnelType !== "Md") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
     }
 
@@ -130,6 +132,7 @@ export async function DELETE(
     }
     return NextResponse.json({ message: "Feedback deleted successfully" });
   } catch (error) {
+    console.error("Failed to delete feedback:", error);
     return NextResponse.json(
       { error: "Failed to delete feedback" },
       { status: 500 }
