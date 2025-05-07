@@ -5,7 +5,10 @@ const nextConfig = {
   poweredByHeader: false,
   experimental: {
     serverActions: {
-      allowedOrigins: ["login.microsoftonline.com", "yourvoice.nssfug.org"],
+      allowedOrigins: [
+        "login.microsoftonline.com",
+        "yourvoice.nssfug.org:9443",
+      ],
     },
     // Add this to trust the proxy headers
     trustHostHeader: true,
