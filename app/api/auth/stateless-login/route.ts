@@ -14,6 +14,7 @@ const getBaseUrlFromRequest = (req: NextRequest) => {
     req.headers.get("host") ||
     "https://yourvoice.nssfug.org:9443";
   const proto = req.headers.get("x-forwarded-proto") || "https";
+  console.log("Base URL:", `${proto}://${host}`);
   return `${proto}://${host}`;
 };
 
