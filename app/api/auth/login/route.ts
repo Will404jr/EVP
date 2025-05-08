@@ -12,7 +12,7 @@ const getBaseUrlFromRequest = (req: NextRequest) => {
   const host =
     req.headers.get("x-forwarded-host") ||
     req.headers.get("host") ||
-    "yourvoice.nssfug.org";
+    "https://yourvoice.nssfug.org:9443";
   const proto = req.headers.get("x-forwarded-proto") || "https";
   return `${proto}://${host}`;
 };

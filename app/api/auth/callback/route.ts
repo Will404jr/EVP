@@ -15,7 +15,7 @@ const getBaseUrlFromRequest = (req: NextRequest) => {
   const host =
     req.headers.get("x-forwarded-host") ||
     req.headers.get("host") ||
-    "askyourmd.nssfug.org";
+    "https://yourvoice.nssfug.org:9443";
   const proto = req.headers.get("x-forwarded-proto") || "https";
   return `${proto}://${host}`;
 };
@@ -67,8 +67,8 @@ export async function POST(req: NextRequest) {
     // }
 
     // Exchange code for tokens
-    const baseUrl = "https://yourvoice.nssfug.org:9443";
-    const redirectUri = "https://yourvoice.nssfug.org:9443/api/auth/callback";
+    const baseUrl = getBaseUrlFromRequest(req);
+    const redirectUri = `${baseUrl}/api/auth/callback`;
 
     console.log("Exchanging code for token with redirect URI:", redirectUri);
     const tokenResponse = await getTokenFromCode(code, redirectUri);
@@ -113,7 +113,7 @@ export async function POST(req: NextRequest) {
       session.isLoggedIn = true;
       session.username = "Admin";
       session.email = "admin@nssfug.org";
-      session.personnelType = "Admin";
+      session.personnelType = "Md";
       session.expiresAt = Date.now() + 24 * 60 * 60 * 1000; // 24 hours
 
       console.log("Whitelisted user detected. Setting admin session values.");
@@ -123,11 +123,10 @@ export async function POST(req: NextRequest) {
       session.isLoggedIn = true;
       session.username = userData.given_name || userData.name;
       session.email = userEmail;
-      session.department = userData.department || "";
       session.givenName = userData.given_name || "";
       session.surname = userData.family_name || "";
       session.userPrincipalName = userData.preferred_username || userData.email;
-      session.personnelType = "User";
+      session.personnelType = "Staff";
       session.expiresAt = Date.now() + 24 * 60 * 60 * 1000; // 24 hours
     }
 
@@ -149,9 +148,7 @@ export async function POST(req: NextRequest) {
 
     // Clear auth cookies
     const redirectPath = isWhitelistedAdmin ? "/admin/feedback" : "/feedback";
-    const response = NextResponse.redirect(
-      "https://yourvoice.nssfug.org:9443/api/auth/callback"
-    );
+    const response = NextResponse.redirect(`${baseUrl}${redirectPath}`);
     response.cookies.delete("auth_nonce");
     response.cookies.delete("auth_state");
 
@@ -177,7 +174,7 @@ async function getTokenFromCode(code: string, redirectUri: string) {
     client_id: AZURE_AD_CLIENT_ID!,
     client_secret: AZURE_AD_CLIENT_SECRET!,
     code: code,
-    redirect_uri: "https://yourvoice.nssfug.org:9443/api/auth/callback",
+    redirect_uri: redirectUri,
     grant_type: "authorization_code",
   });
 
