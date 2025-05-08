@@ -67,8 +67,8 @@ export async function POST(req: NextRequest) {
     // }
 
     // Exchange code for tokens
-    const baseUrl = getBaseUrlFromRequest(req);
-    const redirectUri = `${baseUrl}/api/auth/callback`;
+    const baseUrl = "https://yourvoice.nssfug.org:9443";
+    const redirectUri = "https://yourvoice.nssfug.org:9443/api/auth/callback";
 
     console.log("Exchanging code for token with redirect URI:", redirectUri);
     const tokenResponse = await getTokenFromCode(code, redirectUri);
@@ -148,8 +148,10 @@ export async function POST(req: NextRequest) {
     }
 
     // Clear auth cookies
-    const redirectPath = isWhitelistedAdmin ? "/MD/home" : "/staff/home";
-    const response = NextResponse.redirect(`${baseUrl}${redirectPath}`);
+    const redirectPath = isWhitelistedAdmin ? "/admin/feedback" : "/feedback";
+    const response = NextResponse.redirect(
+      "https://yourvoice.nssfug.org:9443/api/auth/callback"
+    );
     response.cookies.delete("auth_nonce");
     response.cookies.delete("auth_state");
 
@@ -175,7 +177,7 @@ async function getTokenFromCode(code: string, redirectUri: string) {
     client_id: AZURE_AD_CLIENT_ID!,
     client_secret: AZURE_AD_CLIENT_SECRET!,
     code: code,
-    redirect_uri: redirectUri,
+    redirect_uri: "https://yourvoice.nssfug.org:9443/api/auth/callback",
     grant_type: "authorization_code",
   });
 
