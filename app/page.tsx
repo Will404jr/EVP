@@ -195,13 +195,3 @@ const LoginPage = () => {
 };
 
 export default LoginPage;
-
-// AZURE_AD_CLIENT_ID=7bf8cb36-4b9f-44c9-bcac-3cc83ef028f3
-
-// AZURE_AD_CLIENT_SECRET=zoH8Q~ti_uZ3rl.nD1A8OOddRjRxjKEC1eDXQbIj
-
-// AZURE_AD_TENANT_ID=708f7b5b-20fc-4bc8-9150-b1015a308b9c
-
-// BASE_URL=https://yourvoice.nssfug.org:9443
-
-// REDIRECT_URI=https://yourvoice.nssfug.org:9443/api/auth/callback
