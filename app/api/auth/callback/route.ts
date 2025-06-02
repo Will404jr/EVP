@@ -7,7 +7,7 @@ const AZURE_AD_CLIENT_ID = process.env.AZURE_AD_CLIENT_ID
 const AZURE_AD_CLIENT_SECRET = process.env.AZURE_AD_CLIENT_SECRET
 
 // Whitelist of email addresses that should have admin privileges
-const ADMIN_EMAILS = ["payota@nssfug.org", "mathieno@nssfug.org"]
+const ADMIN_EMAILS = ["esserumaga@nssfug.org", "aaabala@nssfug.org"]
 
 // Helper function to get the base URL from request headers
 const getBaseUrlFromRequest = (req: NextRequest) => {
