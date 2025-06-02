@@ -1,219 +1,193 @@
-"use client";
+"use client"
 
-import { useState, useEffect } from "react";
-import {
-  Card,
-  CardContent,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import {
-  MessageSquare,
-  ThumbsDown,
-  ThumbsUp,
-  Clock,
-  Users,
-} from "lucide-react";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
+import { useState, useEffect } from "react"
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Textarea } from "@/components/ui/textarea"
+import { MessageSquare, ThumbsDown, ThumbsUp, Clock, Users } from "lucide-react"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
 
 interface UserData {
-  id: string;
-  displayName: string;
-  mail?: string;
-  userPrincipalName?: string;
-  department?: string;
+  id: string
+  displayName: string
+  mail?: string
+  userPrincipalName?: string
+  department?: string
 }
 
 interface Comment {
-  userId: string; // Changed from username
-  comment: string;
-  createdAt: Date;
+  userId: string // Changed from username
+  comment: string
+  createdAt: Date
 }
 
 interface FeedbackItem {
-  _id: string;
-  title: string;
-  department: string;
-  concern: string;
-  possibleSolution: string;
-  submittedBy: string | null; // Now stores user ID
-  assignedTo: string | null; // Now stores user ID
-  likes: string[]; // Array of user IDs
-  dislikes: string[]; // Array of user IDs
-  comments: Comment[];
-  approved: boolean;
-  createdAt: string | number | Date;
-  status?: string;
+  _id: string
+  title: string
+  department: string
+  concern: string
+  possibleSolution: string
+  submittedBy: string | null // Now stores user ID
+  assignedTo: string | null // Now stores user ID
+  likes: string[] // Array of user IDs
+  dislikes: string[] // Array of user IDs
+  comments: Comment[]
+  approved: boolean
+  createdAt: string | number | Date
+  status?: string
 }
 
 interface AdminFeedbackCardProps {
-  feedback: FeedbackItem;
-  onUpdate: (id: string, data: any) => Promise<void>;
-  users: any[]; // This will be replaced with Azure AD users
+  feedback: FeedbackItem
+  onUpdate: (id: string, data: any) => Promise<void>
+  users: any[] // This will be replaced with Azure AD users
 }
 
-export function AdminFeedbackCard({
-  feedback,
-  onUpdate,
-}: AdminFeedbackCardProps) {
-  const [showComments, setShowComments] = useState(false);
-  const [newComment, setNewComment] = useState("");
-  const [session, setSession] = useState<any>(null);
-  const [isAssignDialogOpen, setIsAssignDialogOpen] = useState(false);
-  const [userSearchQuery, setUserSearchQuery] = useState("");
-  const [userMap, setUserMap] = useState<Record<string, UserData>>({});
-  const [isLoadingUsers, setIsLoadingUsers] = useState(false);
-  const [azureUsers, setAzureUsers] = useState<UserData[]>([]);
+export function AdminFeedbackCard({ feedback, onUpdate }: AdminFeedbackCardProps) {
+  const [showComments, setShowComments] = useState(false)
+  const [newComment, setNewComment] = useState("")
+  const [session, setSession] = useState<any>(null)
+  const [isAssignDialogOpen, setIsAssignDialogOpen] = useState(false)
+  const [userSearchQuery, setUserSearchQuery] = useState("")
+  const [userMap, setUserMap] = useState<Record<string, UserData>>({})
+  const [isLoadingUsers, setIsLoadingUsers] = useState(false)
+  const [azureUsers, setAzureUsers] = useState<UserData[]>([])
 
   useEffect(() => {
     const fetchSession = async () => {
       try {
-        const response = await fetch("/api/session");
-        const sessionData = await response.json();
-        setSession(sessionData);
+        const response = await fetch("/api/session")
+        const sessionData = await response.json()
+        setSession(sessionData)
       } catch (error) {
-        console.error("Error fetching session:", error);
+        console.error("Error fetching session:", error)
       }
-    };
-    fetchSession();
-  }, []);
+    }
+    fetchSession()
+  }, [])
 
   // Fetch user data for all users involved in the feedback
   useEffect(() => {
     const fetchUserData = async () => {
-      setIsLoadingUsers(true);
+      setIsLoadingUsers(true)
       try {
         // Collect all unique user IDs
-        const userIds = new Set<string>();
+        const userIds = new Set<string>()
 
-        if (feedback.submittedBy) userIds.add(feedback.submittedBy);
-        if (feedback.assignedTo) userIds.add(feedback.assignedTo);
+        if (feedback.submittedBy) userIds.add(feedback.submittedBy)
+        if (feedback.assignedTo) userIds.add(feedback.assignedTo)
 
         feedback.comments.forEach((comment) => {
-          if (comment.userId) userIds.add(comment.userId);
-        });
+          if (comment.userId) userIds.add(comment.userId)
+        })
 
         // Create a map of user data
-        const userDataMap: Record<string, UserData> = {};
+        const userDataMap: Record<string, UserData> = {}
 
         // Fetch user data for each ID
         for (const userId of userIds) {
           try {
-            const response = await fetch(`/api/users/${userId}`);
+            const response = await fetch(`/api/users/${userId}`)
             if (response.ok) {
-              const data = await response.json();
+              const data = await response.json()
               if (data.user) {
-                userDataMap[userId] = data.user;
+                userDataMap[userId] = data.user
               }
             }
           } catch (error) {
-            console.error(`Error fetching user ${userId}:`, error);
+            console.error(`Error fetching user ${userId}:`, error)
           }
         }
 
-        setUserMap(userDataMap);
+        setUserMap(userDataMap)
       } catch (error) {
-        console.error("Error fetching user data:", error);
+        console.error("Error fetching user data:", error)
       } finally {
-        setIsLoadingUsers(false);
+        setIsLoadingUsers(false)
       }
-    };
+    }
 
     if (feedback) {
-      fetchUserData();
+      fetchUserData()
     }
-  }, [feedback]);
+  }, [feedback])
 
-  // Fetch Azure AD users when assign dialog opens
+  // Fetch Azure AD users based on search query
   useEffect(() => {
     const fetchAzureUsers = async () => {
-      if (isAssignDialogOpen) {
-        setIsLoadingUsers(true);
+      if (userSearchQuery.trim().length > 0) {
+        setIsLoadingUsers(true)
         try {
-          const response = await fetch("/api/users");
+          const response = await fetch("/api/users")
           if (response.ok) {
-            const data = await response.json();
-            setAzureUsers(data.users || []);
+            const data = await response.json()
+            setAzureUsers(data.users || [])
           }
         } catch (error) {
-          console.error("Error fetching Azure AD users:", error);
+          console.error("Error fetching Azure AD users:", error)
         } finally {
-          setIsLoadingUsers(false);
+          setIsLoadingUsers(false)
         }
+      } else {
+        setAzureUsers([])
       }
-    };
+    }
 
-    fetchAzureUsers();
-  }, [isAssignDialogOpen]);
+    const debounceTimer = setTimeout(fetchAzureUsers, 300)
+    return () => clearTimeout(debounceTimer)
+  }, [userSearchQuery])
 
   const getUserDisplayName = (userId: string | null): string => {
-    if (!userId) return "Anonymous";
-    const user = userMap[userId];
-    return user ? user.displayName : "Unknown User";
-  };
+    if (!userId) return "Anonymous"
+    const user = userMap[userId]
+    return user ? user.displayName : "Unknown User"
+  }
 
   const handleApprove = async () => {
-    if (!session?.isLoggedIn || session.personnelType !== "Md") return;
-    await onUpdate(feedback._id, { action: "approve" });
-  };
+    if (!session?.isLoggedIn || session.personnelType !== "Md") return
+    await onUpdate(feedback._id, { action: "approve" })
+  }
 
   const handleAssign = async (userId: string) => {
-    if (!session?.isLoggedIn || session.personnelType !== "Md") return;
-    await onUpdate(feedback._id, { action: "assign", assignedTo: userId });
-    setIsAssignDialogOpen(false);
-  };
+    if (!session?.isLoggedIn || session.personnelType !== "Md") return
+    await onUpdate(feedback._id, { action: "assign", assignedTo: userId })
+    setIsAssignDialogOpen(false)
+  }
 
   const handleComment = async () => {
-    if (!session?.isLoggedIn || !session.id || !newComment.trim()) return;
+    if (!session?.isLoggedIn || !session.id || !newComment.trim()) return
     await onUpdate(feedback._id, {
       action: "comment",
       comment: newComment.trim(),
-    });
-    setNewComment("");
-  };
+    })
+    setNewComment("")
+  }
 
   // Filter users based on search query
   const filteredUsers = azureUsers.filter((user) =>
-    user.displayName.toLowerCase().includes(userSearchQuery.toLowerCase())
-  );
+    user.displayName.toLowerCase().includes(userSearchQuery.toLowerCase()),
+  )
 
   return (
     <Card className="w-full bg-white shadow-md hover:shadow-lg transition-shadow duration-200">
       <CardHeader className="border-b border-gray-100">
         <div className="flex justify-between items-start">
           <div>
-            <CardTitle className="text-xl font-bold text-gray-900 mb-2">
-              {feedback.title}
-            </CardTitle>
+            <CardTitle className="text-xl font-bold text-gray-900 mb-2">{feedback.title}</CardTitle>
             <div className="flex items-center space-x-4 text-sm text-gray-600">
               <div className="flex items-center">
                 <Users className="h-4 w-4 mr-1" />
-                {isLoadingUsers
-                  ? "Loading..."
-                  : getUserDisplayName(feedback.submittedBy)}
+                {isLoadingUsers ? "Loading..." : getUserDisplayName(feedback.submittedBy)}
               </div>
               <div className="flex items-center">
                 <Clock className="h-4 w-4 mr-1" />
                 {new Date(feedback.createdAt).toLocaleDateString()}
               </div>
-              <div className="font-medium text-gray-700">
-                {feedback.department}
-              </div>
+              <div className="font-medium text-gray-700">{feedback.department}</div>
               <div
                 className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                  feedback.approved
-                    ? "bg-green-100 text-green-800"
-                    : "bg-yellow-100 text-yellow-800"
+                  feedback.approved ? "bg-green-100 text-green-800" : "bg-yellow-100 text-yellow-800"
                 }`}
               >
                 {feedback.approved ? "Approved" : "Pending Approval"}
@@ -224,10 +198,10 @@ export function AdminFeedbackCard({
                     feedback.status === "Resolved"
                       ? "bg-green-100 text-green-800"
                       : feedback.status === "Pending"
-                      ? "bg-blue-100 text-blue-800"
-                      : feedback.status === "Overdue"
-                      ? "bg-red-100 text-red-800"
-                      : "bg-gray-100 text-gray-800"
+                        ? "bg-blue-100 text-blue-800"
+                        : feedback.status === "Overdue"
+                          ? "bg-red-100 text-red-800"
+                          : "bg-gray-100 text-gray-800"
                   }`}
                 >
                   {feedback.status}
@@ -237,11 +211,7 @@ export function AdminFeedbackCard({
           </div>
           <div className="flex space-x-2">
             {!feedback.approved && (
-              <Button
-                size="sm"
-                onClick={handleApprove}
-                className="bg-green-600 hover:bg-green-700 text-white"
-              >
+              <Button size="sm" onClick={handleApprove} className="bg-green-600 hover:bg-green-700 text-white">
                 Approve
               </Button>
             )}
@@ -257,25 +227,15 @@ export function AdminFeedbackCard({
       </CardHeader>
 
       <CardContent className="pt-6 pb-4">
-        <div
-          className={`grid ${
-            feedback.possibleSolution ? "grid-cols-2" : "grid-cols-1"
-          } gap-8`}
-        >
+        <div className={`grid ${feedback.possibleSolution ? "grid-cols-2" : "grid-cols-1"} gap-8`}>
           <div className={feedback.possibleSolution ? "" : "col-span-2"}>
             <h4 className="font-semibold text-gray-900 mb-2">Comment</h4>
-            <p className="text-gray-700 bg-gray-50 p-4 rounded-lg min-h-[100px]">
-              {feedback.concern}
-            </p>
+            <p className="text-gray-700 bg-gray-50 p-4 rounded-lg min-h-[100px]">{feedback.concern}</p>
           </div>
           {feedback.possibleSolution && (
             <div>
-              <h4 className="font-semibold text-gray-900 mb-2">
-                Proposed Solution
-              </h4>
-              <p className="text-gray-700 bg-gray-50 p-4 rounded-lg min-h-[100px]">
-                {feedback.possibleSolution}
-              </p>
+              <h4 className="font-semibold text-gray-900 mb-2">Proposed Solution</h4>
+              <p className="text-gray-700 bg-gray-50 p-4 rounded-lg min-h-[100px]">{feedback.possibleSolution}</p>
             </div>
           )}
         </div>
@@ -292,12 +252,7 @@ export function AdminFeedbackCard({
               <ThumbsDown className="h-4 w-4 mr-2" />
               <span>{feedback.dislikes.length}</span>
             </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setShowComments(!showComments)}
-              className="text-gray-700"
-            >
+            <Button variant="ghost" size="sm" onClick={() => setShowComments(!showComments)} className="text-gray-700">
               <MessageSquare className="h-4 w-4 mr-2" />
               <span>{feedback.comments.length}</span>
             </Button>
@@ -305,10 +260,7 @@ export function AdminFeedbackCard({
 
           {feedback.assignedTo && (
             <div className="text-sm text-gray-600">
-              Assigned to:{" "}
-              {isLoadingUsers
-                ? "Loading..."
-                : getUserDisplayName(feedback.assignedTo)}
+              Assigned to: {isLoadingUsers ? "Loading..." : getUserDisplayName(feedback.assignedTo)}
             </div>
           )}
         </div>
@@ -318,20 +270,14 @@ export function AdminFeedbackCard({
             {isLoadingUsers ? (
               <div className="text-center py-4">
                 <div className="inline-block h-6 w-6 animate-spin rounded-full border-2 border-gray-300 border-t-gray-600"></div>
-                <p className="mt-2 text-sm text-gray-500">
-                  Loading comments...
-                </p>
+                <p className="mt-2 text-sm text-gray-500">Loading comments...</p>
               </div>
             ) : (
               feedback.comments.map((comment, index) => (
                 <div key={index} className="bg-gray-50 p-4 rounded-lg">
                   <div className="flex items-center justify-between mb-2">
-                    <div className="font-semibold text-gray-900">
-                      {getUserDisplayName(comment.userId)}
-                    </div>
-                    <div className="text-xs text-gray-500">
-                      {new Date(comment.createdAt).toLocaleString()}
-                    </div>
+                    <div className="font-semibold text-gray-900">{getUserDisplayName(comment.userId)}</div>
+                    <div className="text-xs text-gray-500">{new Date(comment.createdAt).toLocaleString()}</div>
                   </div>
                   <div className="text-gray-700">{comment.comment}</div>
                 </div>
@@ -357,7 +303,16 @@ export function AdminFeedbackCard({
       </CardFooter>
 
       {/* Assign User Dialog */}
-      <Dialog open={isAssignDialogOpen} onOpenChange={setIsAssignDialogOpen}>
+      <Dialog
+        open={isAssignDialogOpen}
+        onOpenChange={(open) => {
+          setIsAssignDialogOpen(open)
+          if (!open) {
+            setUserSearchQuery("")
+            setAzureUsers([])
+          }
+        }}
+      >
         <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>Assign Feedback</DialogTitle>
@@ -371,18 +326,18 @@ export function AdminFeedbackCard({
             />
 
             <div className="max-h-[300px] overflow-y-auto border rounded-md">
-              {isLoadingUsers ? (
+              {userSearchQuery.trim().length === 0 ? (
+                <div className="p-8 text-center text-gray-500">
+                  <Users className="h-12 w-12 mx-auto mb-3 text-gray-300" />
+                  <p>Start typing to search for users...</p>
+                </div>
+              ) : isLoadingUsers ? (
                 <div className="p-8 text-center">
                   <div className="inline-block h-6 w-6 animate-spin rounded-full border-2 border-blue-600 border-t-transparent"></div>
-                  <p className="mt-2 text-gray-500">Loading users...</p>
+                  <p className="mt-2 text-gray-500">Searching users...</p>
                 </div>
               ) : filteredUsers.length === 0 ? (
-                <div
-                  key="no-users-found"
-                  className="p-4 text-center text-gray-500"
-                >
-                  No users found
-                </div>
+                <div className="p-4 text-center text-gray-500">No users found matching "{userSearchQuery}"</div>
               ) : (
                 filteredUsers.map((user) => (
                   <div
@@ -407,9 +362,7 @@ export function AdminFeedbackCard({
                             {user.department || "Staff"}
                           </span>
                         </div>
-                        <p className="text-sm text-gray-500 truncate">
-                          {user.mail || user.userPrincipalName}
-                        </p>
+                        <p className="text-sm text-gray-500 truncate">{user.mail || user.userPrincipalName}</p>
                       </div>
                     </div>
                   </div>
@@ -418,15 +371,12 @@ export function AdminFeedbackCard({
             </div>
           </div>
           <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setIsAssignDialogOpen(false)}
-            >
+            <Button variant="outline" onClick={() => setIsAssignDialogOpen(false)}>
               Cancel
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
     </Card>
-  );
+  )
 }
