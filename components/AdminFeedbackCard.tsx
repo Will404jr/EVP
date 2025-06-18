@@ -88,7 +88,7 @@ export function AdminFeedbackCard({ feedback, onUpdate }: AdminFeedbackCardProps
         // Fetch user data for each ID
         for (const userId of userIds) {
           try {
-            const response = await fetch(`/api/users/${userId}`)
+            const response = await fetch(`https://askyourmd.nssfug.org/api/users/${userId}`)
             if (response.ok) {
               const data = await response.json()
               if (data.user) {
@@ -119,7 +119,7 @@ export function AdminFeedbackCard({ feedback, onUpdate }: AdminFeedbackCardProps
       if (userSearchQuery.trim().length > 0) {
         setIsLoadingUsers(true)
         try {
-          const response = await fetch("/api/users")
+          const response = await fetch("https://askyourmd.nssfug.org/api/users")
           if (response.ok) {
             const data = await response.json()
             setAzureUsers(data.users || [])
