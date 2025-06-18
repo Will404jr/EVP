@@ -120,16 +120,19 @@ export function AdminFeedbackCard({ feedback, onUpdate }: AdminFeedbackCardProps
         // Only search after 3+ characters
         setIsLoadingUsers(true)
         try {
-          // Use server-side filtering by passing the search query as a parameter
+          // Use the dedicated search endpoint
           const response = await fetch(
-            `https://askyourmd.nssfug.org/api/users?name=${encodeURIComponent(userSearchQuery.trim())}`,
+            `https://askyourmd.nssfug.org/api/users/search?q=${encodeURIComponent(userSearchQuery.trim())}&limit=20`,
           )
           if (response.ok) {
             const data = await response.json()
             setAzureUsers(data.users || [])
+          } else {
+            console.error("Search failed:", response.status)
+            setAzureUsers([])
           }
         } catch (error) {
-          console.error("Error fetching Azure AD users:", error)
+          console.error("Error searching Azure AD users:", error)
           setAzureUsers([])
         } finally {
           setIsLoadingUsers(false)
@@ -140,7 +143,7 @@ export function AdminFeedbackCard({ feedback, onUpdate }: AdminFeedbackCardProps
       }
     }
 
-    const debounceTimer = setTimeout(fetchAzureUsers, 500) // Increased debounce time
+    const debounceTimer = setTimeout(fetchAzureUsers, 300)
     return () => clearTimeout(debounceTimer)
   }, [userSearchQuery])
 
