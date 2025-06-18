@@ -116,25 +116,31 @@ export function AdminFeedbackCard({ feedback, onUpdate }: AdminFeedbackCardProps
   // Fetch Azure AD users based on search query
   useEffect(() => {
     const fetchAzureUsers = async () => {
-      if (userSearchQuery.trim().length > 0) {
+      if (userSearchQuery.trim().length > 2) {
+        // Only search after 3+ characters
         setIsLoadingUsers(true)
         try {
-          const response = await fetch("https://askyourmd.nssfug.org/api/users")
+          // Use server-side filtering by passing the search query as a parameter
+          const response = await fetch(
+            `https://askyourmd.nssfug.org/api/users?name=${encodeURIComponent(userSearchQuery.trim())}`,
+          )
           if (response.ok) {
             const data = await response.json()
             setAzureUsers(data.users || [])
           }
         } catch (error) {
           console.error("Error fetching Azure AD users:", error)
+          setAzureUsers([])
         } finally {
           setIsLoadingUsers(false)
         }
       } else {
         setAzureUsers([])
+        setIsLoadingUsers(false)
       }
     }
 
-    const debounceTimer = setTimeout(fetchAzureUsers, 300)
+    const debounceTimer = setTimeout(fetchAzureUsers, 500) // Increased debounce time
     return () => clearTimeout(debounceTimer)
   }, [userSearchQuery])
 
@@ -164,10 +170,8 @@ export function AdminFeedbackCard({ feedback, onUpdate }: AdminFeedbackCardProps
     setNewComment("")
   }
 
-  // Filter users based on search query
-  const filteredUsers = azureUsers.filter((user) =>
-    user.displayName.toLowerCase().includes(userSearchQuery.toLowerCase()),
-  )
+  // Since we're doing server-side filtering, we can use azureUsers directly
+  const filteredUsers = azureUsers
 
   return (
     <Card className="w-full bg-white shadow-md hover:shadow-lg transition-shadow duration-200">
@@ -319,7 +323,7 @@ export function AdminFeedbackCard({ feedback, onUpdate }: AdminFeedbackCardProps
           </DialogHeader>
           <div className="space-y-4">
             <Input
-              placeholder="Search users..."
+              placeholder="Search users by name (min 3 characters)..."
               value={userSearchQuery}
               onChange={(e) => setUserSearchQuery(e.target.value)}
               className="w-full"
@@ -329,7 +333,7 @@ export function AdminFeedbackCard({ feedback, onUpdate }: AdminFeedbackCardProps
               {userSearchQuery.trim().length === 0 ? (
                 <div className="p-8 text-center text-gray-500">
                   <Users className="h-12 w-12 mx-auto mb-3 text-gray-300" />
-                  <p>Start typing to search for users...</p>
+                  <p>Type at least 3 characters to search for users...</p>
                 </div>
               ) : isLoadingUsers ? (
                 <div className="p-8 text-center">
