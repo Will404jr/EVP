@@ -116,19 +116,19 @@ export function AdminFeedbackCard({ feedback, onUpdate }: AdminFeedbackCardProps
   // Fetch Azure AD users based on search query
   useEffect(() => {
     const fetchAzureUsers = async () => {
-      if (userSearchQuery.trim().length > 2) {
-        // Only search after 3+ characters
+      const trimmedQuery = userSearchQuery.trim()
+
+      if (trimmedQuery.length >= 2) {
         setIsLoadingUsers(true)
         try {
-          // Use the dedicated search endpoint
           const response = await fetch(
-            `https://askyourmd.nssfug.org/api/users/search?q=${encodeURIComponent(userSearchQuery.trim())}&limit=20`,
+            `https://askyourmd.nssfug.org/api/users/search?q=${encodeURIComponent(trimmedQuery)}&limit=20`,
           )
           if (response.ok) {
             const data = await response.json()
             setAzureUsers(data.users || [])
           } else {
-            console.error("Search failed:", response.status)
+            console.error("Search failed:", response.status, response.statusText)
             setAzureUsers([])
           }
         } catch (error) {
@@ -143,7 +143,7 @@ export function AdminFeedbackCard({ feedback, onUpdate }: AdminFeedbackCardProps
       }
     }
 
-    const debounceTimer = setTimeout(fetchAzureUsers, 300)
+    const debounceTimer = setTimeout(fetchAzureUsers, 500) // Increased debounce time
     return () => clearTimeout(debounceTimer)
   }, [userSearchQuery])
 
@@ -325,18 +325,38 @@ export function AdminFeedbackCard({ feedback, onUpdate }: AdminFeedbackCardProps
             <DialogTitle>Assign Feedback</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
-            <Input
-              placeholder="Search users by name (min 3 characters)..."
-              value={userSearchQuery}
-              onChange={(e) => setUserSearchQuery(e.target.value)}
-              className="w-full"
-            />
+            <div className="relative">
+              <Input
+                placeholder="Search users by name (min 2 characters)..."
+                value={userSearchQuery}
+                onChange={(e) => setUserSearchQuery(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Escape") {
+                    setUserSearchQuery("")
+                    setAzureUsers([])
+                  }
+                }}
+                className="w-full pr-10"
+                autoFocus
+              />
+              {userSearchQuery && (
+                <button
+                  onClick={() => {
+                    setUserSearchQuery("")
+                    setAzureUsers([])
+                  }}
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
 
             <div className="max-h-[300px] overflow-y-auto border rounded-md">
-              {userSearchQuery.trim().length === 0 ? (
+              {userSearchQuery.trim().length < 2 ? (
                 <div className="p-8 text-center text-gray-500">
                   <Users className="h-12 w-12 mx-auto mb-3 text-gray-300" />
-                  <p>Type at least 3 characters to search for users...</p>
+                  <p>Type at least 2 characters to search for users...</p>
                 </div>
               ) : isLoadingUsers ? (
                 <div className="p-8 text-center">
@@ -344,7 +364,10 @@ export function AdminFeedbackCard({ feedback, onUpdate }: AdminFeedbackCardProps
                   <p className="mt-2 text-gray-500">Searching users...</p>
                 </div>
               ) : filteredUsers.length === 0 ? (
-                <div className="p-4 text-center text-gray-500">No users found matching "{userSearchQuery}"</div>
+                <div className="p-4 text-center text-gray-500">
+                  <div className="mb-2">No users found matching "{userSearchQuery}"</div>
+                  <div className="text-sm text-gray-400">Try a different search term or check spelling</div>
+                </div>
               ) : (
                 filteredUsers.map((user) => (
                   <div
