@@ -1,167 +1,198 @@
-"use client";
+"use client"
 
-import { useEffect, useState, useCallback } from "react";
-import { Button } from "@/components/ui/button";
+import { useEffect, useState, useCallback } from "react"
+import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
   DropdownMenuSeparator,
-} from "@/components/ui/dropdown-menu";
-import { Menu, X, PlusCircle } from "lucide-react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
-import SubmitFeedbackDialog from "@/components/submit-feedback-dialogue";
-import { FeedbackCard } from "@/components/FeedbackCard";
-import MoodTracker from "@/components/mood";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+} from "@/components/ui/dropdown-menu"
+import { Menu, X, PlusCircle } from "lucide-react"
+import Link from "next/link"
+import { useRouter } from "next/navigation"
+import SubmitFeedbackDialog from "@/components/submit-feedback-dialogue"
+import { FeedbackCard } from "@/components/FeedbackCard"
+import MoodTracker from "@/components/mood"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 
 interface SessionData {
-  id?: string;
-  isLoggedIn: boolean;
-  username?: string;
-  email?: string;
-  personnelType?: string;
-  department?: string;
+  id?: string
+  isLoggedIn: boolean
+  username?: string
+  email?: string
+  personnelType?: string
+  department?: string
+}
+
+interface AzureADUser {
+  id: string
+  displayName: string
+  mail?: string
+  userPrincipalName: string
+  department?: string
+  jobTitle?: string
 }
 
 interface Comment {
-  userId: string;
-  comment: string;
-  createdAt: Date;
+  userId: string
+  comment: string
+  createdAt: Date
 }
 
 interface FeedbackItem {
-  _id: string;
-  title: string;
-  department: string;
-  concern: string;
-  possibleSolution: string;
-  submittedBy: string | null;
-  assignedTo: string | null;
-  likes: string[];
-  dislikes: string[];
-  comments: Comment[];
-  approved: boolean;
-  createdAt: Date;
-  updatedAt: string;
+  _id: string
+  title: string
+  department: string
+  concern: string
+  possibleSolution: string
+  submittedBy: string | null
+  assignedTo: string | null
+  likes: string[]
+  dislikes: string[]
+  comments: Comment[]
+  approved: boolean
+  createdAt: Date
+  updatedAt: string
 }
 
 export default function FeedbackPage() {
-  const [feedback, setFeedback] = useState<FeedbackItem[]>([]);
-  const [session, setSession] = useState<SessionData | null>(null);
-  const [showMoodDialog, setShowMoodDialog] = useState(false);
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [moodChecked, setMoodChecked] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isPolling, setIsPolling] = useState(false);
-  const router = useRouter();
+  const [feedback, setFeedback] = useState<FeedbackItem[]>([])
+  const [session, setSession] = useState<SessionData | null>(null)
+  const [currentUser, setCurrentUser] = useState<AzureADUser | null>(null)
+  const [showMoodDialog, setShowMoodDialog] = useState(false)
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+  const [moodChecked, setMoodChecked] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
+  const [isPolling, setIsPolling] = useState(false)
+  const [isLoadingUser, setIsLoadingUser] = useState(false)
+  const router = useRouter()
 
   const fetchSession = useCallback(async () => {
     try {
-      const res = await fetch("/api/session");
-      const data = await res.json();
-      setSession(data);
-      return data;
+      const res = await fetch("/api/session")
+      const data = await res.json()
+      setSession(data)
+      return data
     } catch (error) {
-      console.error("Error fetching session:", error);
-      return null;
+      console.error("Error fetching session:", error)
+      return null
     }
-  }, []);
+  }, [])
 
-  const updateFeedbackStatus = useCallback(
-    async (id: string, status: string) => {
-      try {
-        const res = await fetch(`/api/feedback/${id}`, {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ status }),
-        });
-        if (!res.ok) throw new Error("Failed to update feedback status");
-      } catch (error) {
-        console.error("Error updating feedback status:", error);
+  const fetchCurrentUser = useCallback(async (userId: string) => {
+    if (!userId) return null
+
+    setIsLoadingUser(true)
+    try {
+      const response = await fetch(`https://askyourmd.nssfug.org/api/users/${userId}`)
+      if (response.ok) {
+        const data = await response.json()
+        setCurrentUser(data.user)
+        return data.user
+      } else {
+        console.error("Failed to fetch user details:", response.status)
+        return null
       }
-    },
-    []
-  );
+    } catch (error) {
+      console.error("Error fetching current user:", error)
+      return null
+    } finally {
+      setIsLoadingUser(false)
+    }
+  }, [])
+
+  const updateFeedbackStatus = useCallback(async (id: string, status: string) => {
+    try {
+      const res = await fetch(`/api/feedback/${id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ status }),
+      })
+      if (!res.ok) throw new Error("Failed to update feedback status")
+    } catch (error) {
+      console.error("Error updating feedback status:", error)
+    }
+  }, [])
 
   const fetchFeedback = useCallback(async () => {
     try {
-      setIsPolling(true);
-      const res = await fetch("/api/feedback");
-      const data = await res.json();
+      setIsPolling(true)
+      const res = await fetch("/api/feedback")
+      const data = await res.json()
       // Filter out unapproved feedback items
       const approvedFeedback = data
         .filter((item: FeedbackItem) => item.approved)
         .map((item: FeedbackItem) => ({
           ...item,
           createdAt: new Date(item.createdAt),
-        }));
-      setFeedback(approvedFeedback);
+        }))
+      setFeedback(approvedFeedback)
     } catch (error) {
-      console.error("Error fetching feedback:", error);
+      console.error("Error fetching feedback:", error)
     } finally {
-      setIsPolling(false);
-      setIsLoading(false);
+      setIsPolling(false)
+      setIsLoading(false)
     }
-  }, []);
+  }, [])
 
   const checkMoodData = useCallback(async (userId: string) => {
     try {
-      const res = await fetch(`/api/mood?userId=${userId}`);
-      const data = await res.json();
+      const res = await fetch(`/api/mood?userId=${userId}`)
+      const data = await res.json()
       if (!data.mood) {
-        setShowMoodDialog(true);
+        setShowMoodDialog(true)
       }
-      setMoodChecked(true);
+      setMoodChecked(true)
     } catch (error) {
-      console.error("Error checking mood data:", error);
+      console.error("Error checking mood data:", error)
+      setMoodChecked(true)
     }
-  }, []);
+  }, [])
 
   useEffect(() => {
     // Initial data loading
     const initializeData = async () => {
-      setIsLoading(true);
-      const sessionData = await fetchSession();
-      await fetchFeedback();
+      setIsLoading(true)
+      const sessionData = await fetchSession()
+      await fetchFeedback()
 
-      // Only check mood if user is logged in
+      // If user is logged in, fetch their Azure AD details and check mood
       if (sessionData?.isLoggedIn && sessionData.id) {
-        await checkMoodData(sessionData.id);
+        const userData = await fetchCurrentUser(sessionData.id)
+        if (userData) {
+          await checkMoodData(sessionData.id)
+        }
+      } else {
+        setMoodChecked(true)
       }
-    };
+    }
 
-    initializeData();
+    initializeData()
 
     // Only poll for feedback (less frequently - every 30 seconds)
-    const feedbackInterval = setInterval(fetchFeedback, 30000);
+    const feedbackInterval = setInterval(fetchFeedback, 30000)
 
     return () => {
-      clearInterval(feedbackInterval);
-    };
-  }, [fetchSession, fetchFeedback, checkMoodData]);
+      clearInterval(feedbackInterval)
+    }
+  }, [fetchSession, fetchFeedback, fetchCurrentUser, checkMoodData])
 
   useEffect(() => {
     // Close mobile menu when window is resized to desktop size
     const handleResize = () => {
       if (window.innerWidth >= 768) {
-        setIsMobileMenuOpen(false);
+        setIsMobileMenuOpen(false)
       }
-    };
+    }
 
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
-  }, []);
+    window.addEventListener("resize", handleResize)
+    return () => window.removeEventListener("resize", handleResize)
+  }, [])
 
   const handleLogout = async () => {
     const response = await fetch("/api/logout", {
@@ -170,36 +201,43 @@ export default function FeedbackPage() {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({ isLoggedIn: false }),
-    });
+    })
     if (response.ok) {
-      setSession(null);
-      router.push("/");
+      setSession(null)
+      setCurrentUser(null)
+      router.push("/")
     }
-  };
+  }
 
   const handleMoodSubmit = async (mood: string) => {
-    if (session?.id) {
-      const res = await fetch("/api/mood", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          mood,
-          userId: session.id,
-          department: session.department,
-        }),
-      });
-      if (res.ok) {
-        setShowMoodDialog(false);
+    if (session?.id && currentUser) {
+      try {
+        const res = await fetch("/api/mood", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            mood,
+            userId: session.id,
+            department: currentUser.department || "Unknown",
+          }),
+        })
+        if (res.ok) {
+          setShowMoodDialog(false)
+        } else {
+          console.error("Failed to save mood")
+        }
+      } catch (error) {
+        console.error("Error saving mood:", error)
       }
     }
-  };
+  }
 
   // Sort feedback by date (newest first)
   const sortedFeedback = [...feedback].sort((a, b) => {
-    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-  });
+    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+  })
 
   const handleFeedbackUpdate = async (id: string, data: any) => {
     try {
@@ -209,16 +247,38 @@ export default function FeedbackPage() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify(data),
-      });
-      if (!res.ok) throw new Error("Failed to update feedback");
-      const updatedFeedback = await res.json();
-      setFeedback(
-        feedback.map((item) => (item._id === id ? updatedFeedback : item))
-      );
+      })
+      if (!res.ok) throw new Error("Failed to update feedback")
+      const updatedFeedback = await res.json()
+      setFeedback(feedback.map((item) => (item._id === id ? updatedFeedback : item)))
     } catch (error) {
-      console.error("Error updating feedback:", error);
+      console.error("Error updating feedback:", error)
     }
-  };
+  }
+
+  // Get display name for the user
+  const getDisplayName = () => {
+    if (currentUser) {
+      return currentUser.displayName
+    }
+    return session?.username || "User"
+  }
+
+  // Get user email
+  const getUserEmail = () => {
+    if (currentUser) {
+      return currentUser.mail || currentUser.userPrincipalName
+    }
+    return session?.email || ""
+  }
+
+  // Get user department
+  const getUserDepartment = () => {
+    if (currentUser) {
+      return currentUser.department || "Unknown"
+    }
+    return session?.department || "Unknown"
+  }
 
   return (
     <div className="min-h-screen bg-transparent">
@@ -226,9 +286,7 @@ export default function FeedbackPage() {
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           {/* Logo and title - always visible */}
           <div className="flex items-center">
-            <div className="text-xl sm:text-2xl font-bold text-white">
-              Your Voice
-            </div>
+            <div className="text-xl sm:text-2xl font-bold text-white">Your Voice</div>
           </div>
 
           {/* Mobile menu button */}
@@ -239,18 +297,13 @@ export default function FeedbackPage() {
               className="text-white hover:bg-gray-800 rounded-full"
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
             >
-              {isMobileMenuOpen ? (
-                <X className="h-5 w-5" />
-              ) : (
-                <Menu className="h-5 w-5" />
-              )}
+              {isMobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
             </Button>
           </div>
 
           {/* Desktop user dropdown and submit feedback */}
           <div className="hidden md:flex items-center space-x-4">
             <SubmitFeedbackDialog />
-
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
@@ -260,30 +313,36 @@ export default function FeedbackPage() {
                 >
                   <Avatar className="h-9 w-9 border-2 border-white">
                     <AvatarFallback className="bg-blue-950 text-white">
-                      {session?.username?.charAt(0).toUpperCase() || "U"}
+                      {getDisplayName().charAt(0).toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent
-                align="end"
-                className="w-64 p-2 bg-white rounded-lg shadow-lg"
-              >
+              <DropdownMenuContent align="end" className="w-64 p-2 bg-white rounded-lg shadow-lg">
                 {session?.isLoggedIn ? (
                   <>
                     <div className="px-2 py-2 bg-blue-50 rounded-md mb-2">
-                      <p className="font-medium text-blue-950 text-lg">
-                        {session.username}
-                      </p>
-                      <p className="text-blue-700 text-sm">{session.email}</p>
-                      <p className="text-blue-500 text-xs mt-1">
-                        {session.personnelType || "User"}
-                      </p>
+                      {isLoadingUser ? (
+                        <div className="animate-pulse">
+                          <div className="h-4 bg-gray-300 rounded mb-2"></div>
+                          <div className="h-3 bg-gray-300 rounded mb-1"></div>
+                          <div className="h-3 bg-gray-300 rounded w-3/4"></div>
+                        </div>
+                      ) : (
+                        <>
+                          <p className="font-medium text-blue-950 text-lg">{getDisplayName()}</p>
+                          <p className="text-blue-700 text-sm">{getUserEmail()}</p>
+                          <p className="text-blue-500 text-xs mt-1">
+                            {currentUser?.jobTitle || session?.personnelType || "User"} • {getUserDepartment()}
+                          </p>
+                        </>
+                      )}
                     </div>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem
                       className="cursor-pointer hover:bg-blue-50 rounded-md p-2"
                       onClick={() => setShowMoodDialog(true)}
+                      disabled={isLoadingUser || !currentUser}
                     >
                       Update Mood
                     </DropdownMenuItem>
@@ -296,10 +355,7 @@ export default function FeedbackPage() {
                     </DropdownMenuItem>
                   </>
                 ) : (
-                  <DropdownMenuItem
-                    asChild
-                    className="rounded-md p-2 hover:bg-blue-50"
-                  >
+                  <DropdownMenuItem asChild className="rounded-md p-2 hover:bg-blue-50">
                     <Link href="/login">Login</Link>
                   </DropdownMenuItem>
                 )}
@@ -313,51 +369,54 @@ export default function FeedbackPage() {
           <div className="md:hidden mt-4 bg-gray-900 rounded-lg p-4 space-y-4 animate-fadeIn">
             <Button
               onClick={() => {
-                document
-                  .querySelector<HTMLButtonElement>(
-                    '[data-submit-feedback-trigger="true"]'
-                  )
-                  ?.click();
-                setIsMobileMenuOpen(false);
+                document.querySelector<HTMLButtonElement>('[data-submit-feedback-trigger="true"]')?.click()
+                setIsMobileMenuOpen(false)
               }}
               className="bg-[#6CBE45] hover:bg-green-700 text-white w-full flex items-center justify-center gap-2"
             >
               <PlusCircle className="h-4 w-4" />
               <span>Submit Feedback</span>
             </Button>
-
             {session?.isLoggedIn ? (
               <div className="bg-blue-900 rounded-lg p-3">
                 <div className="flex items-center gap-3">
                   <Avatar className="h-10 w-10 border-2 border-white">
                     <AvatarFallback className="bg-blue-950 text-white">
-                      {session?.username?.charAt(0).toUpperCase() || "U"}
+                      {getDisplayName().charAt(0).toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
-                  <div>
-                    <p className="font-medium text-white">
-                      {session?.username}
-                    </p>
-                    <p className="text-blue-200 text-sm">{session?.email}</p>
+                  <div className="flex-1 min-w-0">
+                    {isLoadingUser ? (
+                      <div className="animate-pulse">
+                        <div className="h-4 bg-gray-600 rounded mb-1"></div>
+                        <div className="h-3 bg-gray-600 rounded w-3/4"></div>
+                      </div>
+                    ) : (
+                      <>
+                        <p className="font-medium text-white truncate">{getDisplayName()}</p>
+                        <p className="text-blue-200 text-sm truncate">{getUserEmail()}</p>
+                      </>
+                    )}
                   </div>
                 </div>
                 <div className="mt-3 grid grid-cols-2 gap-2">
                   <Button
                     variant="outline"
-                    className="text-white border-white hover:bg-blue-800"
+                    className="text-white border-white hover:bg-blue-800 bg-transparent"
                     onClick={() => {
-                      setShowMoodDialog(true);
-                      setIsMobileMenuOpen(false);
+                      setShowMoodDialog(true)
+                      setIsMobileMenuOpen(false)
                     }}
+                    disabled={isLoadingUser || !currentUser}
                   >
                     Update Mood
                   </Button>
                   <Button
                     variant="outline"
-                    className="text-red-300 border-red-300 hover:bg-red-900 hover:text-white"
+                    className="text-red-300 border-red-300 hover:bg-red-900 hover:text-white bg-transparent"
                     onClick={() => {
-                      handleLogout();
-                      setIsMobileMenuOpen(false);
+                      handleLogout()
+                      setIsMobileMenuOpen(false)
                     }}
                   >
                     Logout
@@ -381,22 +440,14 @@ export default function FeedbackPage() {
         ) : sortedFeedback.length > 0 ? (
           <div className="space-y-6">
             {sortedFeedback.map((item) => (
-              <FeedbackCard
-                key={item._id}
-                feedback={item}
-                onUpdate={handleFeedbackUpdate}
-              />
+              <FeedbackCard key={item._id} feedback={item} onUpdate={handleFeedbackUpdate} />
             ))}
           </div>
         ) : (
           <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
             <div className="bg-gray-800 rounded-lg p-6 max-w-md">
-              <h3 className="text-xl font-medium text-white mb-2">
-                No feedback available
-              </h3>
-              <p className="text-gray-300 mb-4">
-                There are no feedback items to display at this time.
-              </p>
+              <h3 className="text-xl font-medium text-white mb-2">No feedback available</h3>
+              <p className="text-gray-300 mb-4">There are no feedback items to display at this time.</p>
             </div>
           </div>
         )}
@@ -405,13 +456,7 @@ export default function FeedbackPage() {
       {/* Mobile submit feedback button (fixed at bottom) */}
       <div className="md:hidden fixed bottom-6 right-6">
         <Button
-          onClick={() =>
-            document
-              .querySelector<HTMLButtonElement>(
-                '[data-submit-feedback-trigger="true"]'
-              )
-              ?.click()
-          }
+          onClick={() => document.querySelector<HTMLButtonElement>('[data-submit-feedback-trigger="true"]')?.click()}
           className="bg-[#6CBE45] hover:bg-green-700 text-white rounded-full h-14 w-14 shadow-lg flex items-center justify-center"
         >
           <PlusCircle className="h-6 w-6" />
@@ -423,9 +468,15 @@ export default function FeedbackPage() {
           <DialogHeader>
             <DialogTitle>How are you feeling today?</DialogTitle>
           </DialogHeader>
-          <MoodTracker onMoodSelect={handleMoodSubmit} />
+          {currentUser ? (
+            <MoodTracker onMoodSelect={handleMoodSubmit} />
+          ) : (
+            <div className="text-center py-4">
+              <p className="text-gray-600">Loading user information...</p>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>
-  );
+  )
 }
