@@ -118,7 +118,8 @@ export function AdminFeedbackCard({ feedback, onUpdate }: AdminFeedbackCardProps
     const fetchAzureUsers = async () => {
       const trimmedQuery = userSearchQuery.trim()
 
-      if (trimmedQuery.length >= 2) {
+      if (trimmedQuery.length >= 3) {
+        // Changed from 2 to 3 characters minimum
         setIsLoadingUsers(true)
         try {
           const response = await fetch(
@@ -143,8 +144,15 @@ export function AdminFeedbackCard({ feedback, onUpdate }: AdminFeedbackCardProps
       }
     }
 
-    const debounceTimer = setTimeout(fetchAzureUsers, 500) // Increased debounce time
-    return () => clearTimeout(debounceTimer)
+    // Only start debounce timer if query has minimum length
+    if (userSearchQuery.trim().length >= 2) {
+      const debounceTimer = setTimeout(fetchAzureUsers, 5000) // Increased to 1 second
+      return () => clearTimeout(debounceTimer)
+    } else {
+      // Clear results immediately if query is too short
+      setAzureUsers([])
+      setIsLoadingUsers(false)
+    }
   }, [userSearchQuery])
 
   const getUserDisplayName = (userId: string | null): string => {
@@ -199,7 +207,7 @@ export function AdminFeedbackCard({ feedback, onUpdate }: AdminFeedbackCardProps
               >
                 {feedback.approved ? "Approved" : "Pending Approval"}
               </div>
-              {feedback.status && (
+              {/* {feedback.status && (
                 <div
                   className={`px-2 py-0.5 rounded-full text-xs font-medium ${
                     feedback.status === "Resolved"
@@ -213,7 +221,7 @@ export function AdminFeedbackCard({ feedback, onUpdate }: AdminFeedbackCardProps
                 >
                   {feedback.status}
                 </div>
-              )}
+              )} */}
             </div>
           </div>
           <div className="flex space-x-2">
@@ -327,7 +335,7 @@ export function AdminFeedbackCard({ feedback, onUpdate }: AdminFeedbackCardProps
           <div className="space-y-4">
             <div className="relative">
               <Input
-                placeholder="Search users by name (min 2 characters)..."
+                placeholder="Search users by name (min 3 characters)..."
                 value={userSearchQuery}
                 onChange={(e) => setUserSearchQuery(e.target.value)}
                 onKeyDown={(e) => {
@@ -353,10 +361,10 @@ export function AdminFeedbackCard({ feedback, onUpdate }: AdminFeedbackCardProps
             </div>
 
             <div className="max-h-[300px] overflow-y-auto border rounded-md">
-              {userSearchQuery.trim().length < 2 ? (
+              {userSearchQuery.trim().length < 3 ? (
                 <div className="p-8 text-center text-gray-500">
                   <Users className="h-12 w-12 mx-auto mb-3 text-gray-300" />
-                  <p>Type at least 2 characters to search for users...</p>
+                  <p>Type at least 3 characters to search for users...</p>
                 </div>
               ) : isLoadingUsers ? (
                 <div className="p-8 text-center">
