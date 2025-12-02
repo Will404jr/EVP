@@ -1,14 +1,58 @@
 import mongoose from "mongoose";
 
-const MONGODB_URI = "mongodb://localhost:27017/evp";
-// const MONGODB_URI =
-//   "mongodb+srv://Junior:test01@cluster0.46lb860.mongodb.net/evp?retryWrites=true&w=majority";
+const timeZone = "Africa/Kampala";
+
+// Build MongoDB URI with authentication support
+// Format: mongodb://username:password@host:port/database?authSource=admin
+const buildMongoURI = (): string => {
+  // Option 1: Use full MONGODB_URI if provided
+  if (process.env.MONGODB_URI) {
+    return process.env.MONGODB_URI;
+  }
+
+  // Option 2: Build from individual components
+  const username = process.env.MONGODB_USER;
+  const password = process.env.MONGODB_PASSWORD;
+  const host = process.env.MONGODB_HOST || "localhost";
+  const port = process.env.MONGODB_PORT || "27017";
+  const database = process.env.MONGODB_DATABASE || "evp";
+  const authSource = process.env.MONGODB_AUTH_SOURCE || "admin";
+
+  // If username and password are provided, use authentication
+  if (username && password) {
+    // URL encode the password to handle special characters
+    const encodedPassword = encodeURIComponent(password);
+    return `mongodb://${username}:${encodedPassword}@${host}:${port}/${database}?authSource=${authSource}`;
+  }
+
+  // Fallback to unauthenticated connection (for backward compatibility)
+  return `mongodb://${host}:${port}/${database}`;
+};
+
+const MONGODB_URI = buildMongoURI();
 
 if (!MONGODB_URI) {
   throw new Error(
-    "Please define the MONGODB_URI environment variable inside .env.local"
+    "Please define the MONGODB_URI environment variable or MONGODB_USER and MONGODB_PASSWORD inside .env.local"
   );
 }
+
+// Set Mongoose to convert timestamps to EAT
+mongoose.set("toJSON", {
+  transform: (doc, ret) => {
+    if (ret.createdAt) {
+      ret.createdAt = new Date(ret.createdAt).toLocaleString("en-US", {
+        timeZone,
+      });
+    }
+    if (ret.updatedAt) {
+      ret.updatedAt = new Date(ret.updatedAt).toLocaleString("en-US", {
+        timeZone,
+      });
+    }
+    return ret;
+  },
+});
 
 // Define the type for the cached connection
 type MongooseCache = {
@@ -34,7 +78,7 @@ if (!global.mongoose) {
 
 async function dbConnect(): Promise<typeof mongoose> {
   if (cached.conn) {
-    // console.log("✅ Using existing MongoDB connection");
+    console.log("✅ Using existing MongoDB connection");
     return cached.conn;
   }
 
@@ -50,7 +94,6 @@ async function dbConnect(): Promise<typeof mongoose> {
       .then((mongoose) => {
         console.log("✅ Successfully connected to MongoDB");
 
-        // Add connection event listeners
         mongoose.connection.on("connected", () => {
           console.log("🟢 MongoDB connected");
         });
