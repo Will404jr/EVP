@@ -240,7 +240,7 @@ export default function AdminFeedbackPage() {
           <div className="hidden md:flex items-center space-x-4">
             <Button
               onClick={handleOpenAnalysis}
-              className="bg-[#6CBE45] hover:bg-green-700 text-white flex items-center gap-2"
+              className="bg-gradient-to-r from-green-400 to-emerald-500 text-white flex items-center gap-2"
             >
               <BarChart className="h-4 w-4" />
               <span>Mood Analysis</span>
